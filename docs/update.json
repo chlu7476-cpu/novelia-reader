@@ -1,10 +1,10 @@
 {
-  "versionCode": 58,
-  "versionName": "1.6.2",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.6.2.apk",
-  "notes": "1. 启动公告：需要自备可用的网络工具/VPN\n2. 保留本地导入、简洁模式和多选导出\n3. 动态服务器待 Cloudflare 授权后再切换",
+  "versionCode": 59,
+  "versionName": "1.6.3",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.6.3.apk",
+  "notes": "1. 公告/更新切换到动态服务器\n2. 需要自备可用的网络工具/VPN\n3. 保留本地导入、简洁模式和多选导出",
   "size": 144409,
-  "sha256": "ece17d8534cf930b426293ac6223c2ebac259b3711439cdf5fa0b3d74b0e46d5",
+  "sha256": "5078cd6a2251844f1dc806dfb968d3dbc74d34e5f61fcb49843ce50122d7069a",
   "notice": {
     "id": "vpn-required-2026-11",
     "active": true,

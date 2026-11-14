@@ -18,7 +18,7 @@ import java.util.Locale;
 
 /** Static GitHub Pages update channel: update.json + signed APK. */
 final class UpdateManager {
-    static final String MANIFEST_URL = "https://chlu7476-cpu.github.io/novelia-reader/update.json";
+    static final String MANIFEST_URL = "https://novelia-api.gainful-mantis.workers.dev/v1/update";
     private static final String APK_HOST = "chlu7476-cpu.github.io";
     private static boolean downloading = false;
 
