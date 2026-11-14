@@ -67,6 +67,9 @@
     return {
       theme: raw.theme || DEFAULT_SETTINGS.theme,
       wifiOnly: raw.wifiOnly !== false,
+      autoSubscribe: raw.autoSubscribe !== false,
+      autoCheckShelf: raw.autoCheckShelf !== false,
+      autoDownloadNew: !!raw.autoDownloadNew,
       reader: Object.assign({}, DEFAULT_SETTINGS.reader, raw.reader || {})
     };
   }
@@ -74,6 +77,7 @@
 
   let settings = loadSettings();
   let shelf = loadJSON('nr.shelf', []) || [];
+  let categories = loadJSON('nr.categories', []) || [];
   let progress = loadJSON('nr.progress', {}) || {};
   let recent = loadJSON('nr.recent', []) || [];
 
@@ -293,6 +297,11 @@
     usage: { count: null, loading: false, error: '' },
     appUpdate: { checking: false },
     pendingUpdate: null,
+    shelfFilter: { q: '', status: 'all', cat: 'all', tag: 'all', sort: 'recent' },
+    shelfManage: false,
+    shelfSelected: new Set(),
+    subChecking: false,
+    statsYear: new Date().getFullYear(),
     sheet: null,
     confirmEl: null,
     booted: false
@@ -374,6 +383,7 @@
     else if (r.name === 'shelf') view = shelfView();
     else if (r.name === 'downloads') view = downloadsView();
     else if (r.name === 'settings') view = settingsView();
+    else if (r.name === 'stats') view = statsView();
     else if (r.name === 'wenku') view = r.seg[1] ? wenkuBookView() : wenkuView();
     else view = homeView();
     const renderKey = r.name + '|' + JSON.stringify(r.seg || []);
@@ -1318,6 +1328,78 @@
     if (!p || !p.provider || !p.novel || !p.chapterId) { toast('进度信息不完整'); return; }
     openReader(p.provider, p.novel, p.chapterId, p.index || 0, p.title || '', p.key);
   }
+  const SHELF_STATUS = {
+    want: { label: '想读', cls: 'want' },
+    reading: { label: '在读', cls: 'reading' },
+    read: { label: '已读', cls: 'read' },
+    dropped: { label: '弃读', cls: 'dropped' }
+  };
+  function normalizeShelf() {
+    if (!Array.isArray(categories) || !categories.length) categories = ['未分类'];
+    if (categories.indexOf('未分类') < 0) categories.unshift('未分类');
+    shelf = (shelf || []).filter(x => x && x.key).map(x => {
+      if (!x.status || !SHELF_STATUS[x.status]) x.status = (progress[x.key] && progress[x.key].chapterId) ? 'reading' : 'want';
+      if (!x.category) x.category = '未分类';
+      if (!Array.isArray(x.tags)) x.tags = [];
+      if (x.subscribe == null) x.subscribe = true;
+      x.autoDownload = !!x.autoDownload;
+      x.newChapters = Number(x.newChapters || 0);
+      x.total = Number(x.total || 0);
+      x.addedAt = Number(x.addedAt || Date.now());
+      x.updateAt = Number(x.updateAt || 0);
+      return x;
+    });
+  }
+  function saveShelf() { saveJSON('nr.shelf', shelf); saveJSON('nr.categories', categories); }
+  function shelfFiltered() {
+    const f = state.shelfFilter || {};
+    const q = String(f.q || '').trim().toLowerCase();
+    let list = shelf.slice();
+    if (q) list = list.filter(x => [x.title, x.titleJp, x.author, (x.tags || []).join(' ')].join(' ').toLowerCase().indexOf(q) >= 0);
+    if (f.status && f.status !== 'all') list = list.filter(x => x.status === f.status);
+    if (f.cat && f.cat !== 'all') list = list.filter(x => x.category === f.cat);
+    if (f.tag && f.tag !== 'all') list = list.filter(x => (x.tags || []).indexOf(f.tag) >= 0);
+    const sort = f.sort || 'recent';
+    list.sort((a, b) => {
+      if (sort === 'author') return String(a.author || '').localeCompare(String(b.author || ''), 'zh');
+      if (sort === 'updated') return (b.updateAt || 0) - (a.updateAt || 0);
+      if (sort === 'added') return (b.addedAt || 0) - (a.addedAt || 0);
+      if (sort === 'title') return String(a.title || '').localeCompare(String(b.title || ''), 'zh');
+      return (b.lastReadAt || 0) - (a.lastReadAt || 0) || (b.addedAt || 0) - (a.addedAt || 0);
+    });
+    return list;
+  }
+  function shelfStatusChip(item) {
+    const st = SHELF_STATUS[item.status] || SHELF_STATUS.want;
+    return '<span class="shelf-pill ' + st.cls + '">' + st.label + '</span>';
+  }
+  function shelfAllTags() {
+    const set = {};
+    shelf.forEach(x => (x.tags || []).forEach(t => { if (t) set[t] = 1; }));
+    return Object.keys(set).sort();
+  }
+  function shelfCardHtml(item) {
+    const p = progress[item.key] || {};
+    const pct = Math.max(0, Math.min(100, Math.round((p.percent || 0) * 100)));
+    const last = p.title || '尚未开始阅读';
+    const when = p.updatedAt ? relTime(Math.floor(p.updatedAt / 1000)) : relTime(Math.floor((item.addedAt || 0) / 1000));
+    const selected = state.shelfSelected.has(item.key);
+    const checkbox = state.shelfManage ? '<button class="shelf-check ' + (selected ? 'on' : '') + '" data-action="shelf-select" data-key="' + esc(item.key) + '" aria-label="选择">' + (selected ? icon('check') : '') + '</button>' : '';
+    const update = item.newChapters > 0 ? '<span class="shelf-new">+' + item.newChapters + ' 章</span>' : '';
+    const sub = item.subscribe ? '<span class="shelf-sub">订阅中</span>' : '<span class="shelf-sub off">已暂停</span>';
+    return '<div class="shelf-card ' + (selected ? 'selected' : '') + '" data-action="shelf-card" data-key="' + esc(item.key) + '">'
+      + checkbox
+      + '<div class="shelf-cover">' + coverHtml(item.title, { cat: (PROVIDERS[item.provider] || {}).short || '' }) + '</div>'
+      + '<div class="shelf-main"><div class="shelf-title-row"><h3>' + esc(item.title) + '</h3>' + update + '</div>'
+      + '<div class="shelf-badges">' + shelfStatusChip(item) + '<span class="shelf-cat">' + esc(item.category || '未分类') + '</span>' + sub
+      + (item.tags || []).slice(0, 2).map(t => '<span class="shelf-tag">#' + esc(t) + '</span>').join('') + '</div>'
+      + '<div class="last">' + esc(last) + '</div>'
+      + '<div class="progress"><i style="width:' + pct + '%"></i></div>'
+      + '<div class="shelf-meta"><span>' + pct + '% · ' + esc(item.author || '') + '</span><span>' + when + '</span></div>'
+      + '<div class="shelf-actions"><button class="btn btn-sm btn-primary" data-action="shelf-read" data-key="' + esc(item.key) + '">' + (p.chapterId ? '继续读' : '开始读') + '</button>'
+      + '<button class="btn btn-sm btn-ghost" data-action="shelf-open" data-key="' + esc(item.key) + '">详情</button>'
+      + '<button class="btn btn-sm btn-ghost" data-action="shelf-edit" data-key="' + esc(item.key) + '">管理</button></div></div></div>';
+  }
   function toggleShelfCurrent() {
     const b = state.book;
     if (!b) return;
@@ -1331,9 +1413,12 @@
         key: key, provider: b._provider, novel: b._novel,
         title: b.titleZh || b.titleJp || '', titleJp: b.titleJp || '',
         author: (b.authors || []).map(a => a && a.name).filter(Boolean).join(' / '),
-        total: (b.toc || []).length, addedAt: Date.now()
+        total: (b.toc || []).length, addedAt: Date.now(),
+        status: 'want', category: '未分类', tags: [],
+        subscribe: settings.autoSubscribe !== false,
+        autoDownload: false, newChapters: 0, updateAt: b.updateAt || Date.now()
       });
-      toast('已加入书架');
+      toast(settings.autoSubscribe !== false ? '已收藏并自动订阅' : '已加入书架');
     }
     saveJSON('nr.shelf', shelf);
     render();
@@ -1351,32 +1436,107 @@
    *  Shelf
    * ------------------------------------------------------------------ */
   function shelfView() {
+    normalizeShelf();
+    const f = state.shelfFilter;
+    const updates = shelf.filter(x => x.newChapters > 0).sort((a,b) => b.updateAt - a.updateAt);
+    const list = shelfFiltered();
     let body;
     if (!shelf.length) {
-      body = emptyState('shelf', '书架还是空的', '在作品详情页点收藏，或先下载一本，阅读进度会自动保存。', '去发现', 'go-home');
+      body = emptyState('shelf', '书架还是空的', '在作品详情页点收藏，会自动订阅新章节。', '去发现', 'go-home');
     } else {
-      body = shelf.map(item => {
-        const p = progress[item.key] || {};
-        const pct = Math.max(0, Math.min(100, Math.round((p.percent || 0) * 100)));
-        const last = p.title || '尚未开始阅读';
-        const when = p.updatedAt ? relTime(Math.floor(p.updatedAt / 1000)) : relTime(Math.floor((item.addedAt || 0) / 1000));
-        return '<div class="shelf-card"><div class="shelf-cover">' + coverHtml(item.title, { cat: (PROVIDERS[item.provider] || {}).short || '' }) + '</div>'
-          + '<div class="shelf-main"><h3>' + esc(item.title) + '</h3><div class="last">' + esc(last) + '</div>'
-          + '<div class="progress"><i style="width:' + pct + '%"></i></div>'
-          + '<div class="shelf-meta"><span>' + pct + '% · ' + esc(item.author || '') + '</span><span>' + when + '</span></div>'
-          + '<div class="shelf-actions"><button class="btn btn-sm btn-primary" data-action="shelf-read" data-key="' + esc(item.key) + '">' + (p.chapterId ? '继续读' : '开始读') + '</button>'
-          + '<button class="btn btn-sm btn-ghost" data-action="shelf-open" data-key="' + esc(item.key) + '">详情</button>'
-          + '<button class="btn btn-sm btn-ghost" data-action="shelf-remove" data-key="' + esc(item.key) + '">移除</button></div></div></div>';
-      }).join('');
+      body = (updates.length ? '<div class="update-strip"><div class="update-strip-head"><b>有更新</b><span>' + updates.length + ' 本</span></div>'
+        + updates.slice(0, 6).map(x => '<button class="update-chip" data-action="shelf-read" data-key="' + esc(x.key) + '"><span>' + esc(x.title) + '</span><b>+' + x.newChapters + ' 章</b></button>').join('') + '</div>' : '')
+        + '<div class="shelf-tools"><div class="shelf-search">' + icon('search') + '<input id="shelf-q" value="' + esc(f.q) + '" placeholder="搜索书名、作者、标签"></div>'
+        + '<button class="btn btn-sm btn-ghost" data-action="shelf-check">' + (state.subChecking ? '检查中…' : '检查更新') + '</button>'
+        + '<button class="btn btn-sm btn-ghost" data-action="shelf-manage-toggle">' + (state.shelfManage ? '完成' : '管理') + '</button></div>'
+        + '<div class="shelf-chips">'
+        + [['all','全部'],['want','想读'],['reading','在读'],['read','已读'],['dropped','弃读']].map(x => '<button class="chip ' + (f.status === x[0] ? 'active' : '') + '" data-action="shelf-filter" data-kind="status" data-value="' + x[0] + '">' + x[1] + '</button>').join('')
+        + '</div>'
+        + '<div class="shelf-filter-row">'
+        + '<select id="shelf-cat" aria-label="分类"><option value="all">全部分类</option>' + categories.map(c => '<option value="' + esc(c) + '"' + (f.cat === c ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select>'
+        + '<select id="shelf-tag" aria-label="标签"><option value="all">全部标签</option>' + shelfAllTags().map(t => '<option value="' + esc(t) + '"' + (f.tag === t ? ' selected' : '') + '>#' + esc(t) + '</option>').join('') + '</select>'
+        + '<select id="shelf-sort" aria-label="排序"><option value="recent"' + (f.sort === 'recent' ? ' selected' : '') + '>最近阅读</option><option value="updated"' + (f.sort === 'updated' ? ' selected' : '') + '>更新时间</option><option value="added"' + (f.sort === 'added' ? ' selected' : '') + '>收藏时间</option><option value="author"' + (f.sort === 'author' ? ' selected' : '') + '>作者</option><option value="title"' + (f.sort === 'title' ? ' selected' : '') + '>书名</option></select>'
+        + '</div>'
+        + '<div class="shelf-cat-row">' + categories.map(c => '<button class="chip mini ' + (f.cat === c ? 'active' : '') + '" data-action="shelf-filter" data-kind="cat" data-value="' + esc(c) + '">' + esc(c) + '</button>').join('') + '<button class="chip mini add" data-action="shelf-add-category">+ 分类</button></div>'
+        + (state.shelfManage ? '<div class="bulk-bar"><span>已选 ' + state.shelfSelected.size + ' 本</span><button data-action="shelf-select-all">全选</button><button data-action="bulk-category">分类</button><button data-action="bulk-status">状态</button><button data-action="bulk-subscribe">订阅</button><button data-action="bulk-remove" class="danger">删除</button></div>' : '')
+        + (list.length ? list.map(shelfCardHtml).join('') : '<div class="empty small">没有符合条件的书</div>');
     }
-    const content = topbar({ logo: true, brand: true, actions: '<button class="icon-btn" data-action="go-search">' + icon('search') + '</button>' })
+    const content = topbar({ logo: true, brand: true, actions: '<button class="icon-btn" data-action="go-stats" aria-label="阅读统计">' + icon('star') + '</button><button class="icon-btn" data-action="go-search" aria-label="搜索">' + icon('search') + '</button>' })
       + '<div class="section-head"><h2>我的书架 <span class="sub">' + shelf.length + ' 本</span></h2></div>' + body;
     return { html: shell(content, 'shelf'), tab: 'shelf' };
   }
+  function checkShelfUpdates(manual) {
+    if (state.subChecking) return;
+    const targets = shelf.filter(x => x.subscribe && x.provider !== 'wenku');
+    if (!targets.length) { if (manual) toast('没有已订阅的书'); return; }
+    state.subChecking = true;
+    if (manual) toast('正在检查订阅更新…');
+    if (state.route.name === 'shelf') render();
+    (async () => {
+      let found = 0, errors = 0;
+      for (const item of targets) {
+        try {
+          const d = await apiJson('novel/' + encodePath(item.provider) + '/' + encodePath(item.novel));
+          const total = (d.toc || []).length;
+          const old = Number(item.total || 0);
+          if (total > old) {
+            item.total = total;
+            item.newChapters = total - old;
+            item.updateAt = Date.now();
+            found++;
+            if (settings.autoDownloadNew && native && native.download) {
+              try { native.download(item.provider, item.novel, 0, old + 1, 0); } catch (e) {}
+            }
+          }
+        } catch (e) { errors++; }
+      }
+      saveShelf();
+      try { localStorage.setItem('nr.subCheckAt', String(Date.now())); } catch (e) {}
+      state.subChecking = false;
+      if (state.route.name === 'shelf') render();
+      if (found) toast('有 ' + found + ' 本更新，已放到书架顶部');
+      else if (manual) toast(errors ? '检查完成，部分失败' : '暂时没有新章节');
+    })();
+  }
+  function openShelfEdit(key) {
+    const item = shelfBook(key);
+    if (!item) return;
+    showSheet('<h2>管理收藏</h2><p class="sheet-sub">' + esc(item.title) + '</p>'
+      + '<div class="field"><label>阅读状态</label><select id="se-status">' + Object.keys(SHELF_STATUS).map(k => '<option value="' + k + '"' + (item.status === k ? ' selected' : '') + '>' + SHELF_STATUS[k].label + '</option>').join('') + '</select></div>'
+      + '<div class="field" style="margin-top:8px"><label>分类</label><select id="se-cat">' + categories.map(c => '<option value="' + esc(c) + '"' + (item.category === c ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select></div>'
+      + '<div class="field" style="margin-top:8px"><label>标签（逗号分隔）</label><input id="se-tags" value="' + esc((item.tags || []).join(', ')) + '" placeholder="例如 奇幻, 追更"></div>'
+      + '<div class="setting-row" style="padding:12px 0"><div class="st"><b>自动订阅新章节</b><span>暂停后不再检查这本书的更新</span></div><button class="switch ' + (item.subscribe ? 'on' : '') + '" id="se-sub" data-action="toggle-se-sub"></button></div>'
+      + '<div class="setting-row" style="padding:12px 0;border:0"><div class="st"><b>自动下载新增章节</b><span>只下载新增部分，不动已有缓存</span></div><button class="switch ' + (item.autoDownload ? 'on' : '') + '" id="se-auto" data-action="toggle-se-auto"></button></div>'
+      + '<div class="sheet-actions"><button class="btn btn-ghost" data-action="shelf-remove" data-key="' + esc(key) + '">移出书架</button><button class="btn btn-primary" data-action="save-shelf-edit" data-key="' + esc(key) + '">保存</button></div>');
+  }
+  function saveShelfEdit(key) {
+    const item = shelfBook(key);
+    if (!item) return;
+    item.status = (($('#se-status') || {}).value) || item.status;
+    item.category = (($('#se-cat') || {}).value) || item.category;
+    item.tags = String((($('#se-tags') || {}).value) || '').split(/[,，\s]+/).map(x => x.trim()).filter(Boolean);
+    item.subscribe = !!(($('#se-sub') || {}).classList && $('#se-sub').classList.contains('on'));
+    item.autoDownload = !!(($('#se-auto') || {}).classList && $('#se-auto').classList.contains('on'));
+    if (item.tags.length && categories.indexOf(item.category) < 0) categories.push(item.category);
+    saveShelf(); closeSheet(); toast('已保存'); render();
+  }
+  function openBulkSheet(kind) {
+    if (!state.shelfSelected.size) { toast('先选择书籍'); return; }
+    if (kind === 'category') {
+      showSheet('<h2>批量分类</h2><div class="opt-list">' + categories.map(c => '<button class="opt" data-action="apply-bulk-category" data-value="' + esc(c) + '"><div class="radio"></div><div><b>' + esc(c) + '</b></div></button>').join('') + '</div>');
+    } else if (kind === 'status') {
+      showSheet('<h2>批量状态</h2><div class="opt-list">' + Object.keys(SHELF_STATUS).map(k => '<button class="opt" data-action="apply-bulk-status" data-value="' + k + '"><div class="radio"></div><div><b>' + SHELF_STATUS[k].label + '</b></div></button>').join('') + '</div>');
+    }
+  }
+
   function shelfBook(key) { return shelf.find(x => x.key === key); }
   function shelfRead(key) {
     const item = shelfBook(key);
     if (!item) return;
+    item.status = 'reading';
+    item.lastReadAt = Date.now();
+    item.newChapters = 0;
+    saveShelf();
     const p = progress[key];
     if (p && p.chapterId) openFromProgress(Object.assign({ key: key, provider: item.provider, novel: item.novel }, p));
     else {
@@ -1393,6 +1553,91 @@
     }
   }
 
+  /* ------------------------------------------------------------------ *
+   *  Reading statistics
+   * ------------------------------------------------------------------ */
+  function loadStats() {
+    const s = loadJSON('nr.stats', {}) || {};
+    s.daily = s.daily && typeof s.daily === 'object' ? s.daily : {};
+    s.books = s.books && typeof s.books === 'object' ? s.books : {};
+    s.chapters = s.chapters && typeof s.chapters === 'object' ? s.chapters : {};
+    return s;
+  }
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(Number(sec) || 0));
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+    if (h) return h + ' 小时 ' + m + ' 分';
+    if (m) return m + ' 分钟';
+    return sec + ' 秒';
+  }
+  function dayKey(d) {
+    const x = d || new Date();
+    return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+  }
+  function statsTotals(st) {
+    let seconds = 0, chapters = 0;
+    Object.keys(st.daily).forEach(k => { const d = st.daily[k] || {}; seconds += Number(d.seconds || 0); chapters += Number(d.chapters || 0); });
+    Object.keys(st.chapters).forEach(k => { chapters = Math.max(chapters, 0); });
+    let chapterSet = {};
+    Object.keys(st.chapters).forEach(k => (st.chapters[k] || []).forEach(id => { chapterSet[k + '|' + id] = 1; }));
+    return { seconds: seconds, chapters: Object.keys(chapterSet).length, activeDays: Object.keys(st.daily).filter(k => (st.daily[k].seconds || 0) > 0).length };
+  }
+  function statsStreak(st) {
+    let n = 0; const d = new Date();
+    while (n < 3650) {
+      const k = dayKey(d);
+      if ((st.daily[k] && st.daily[k].seconds) || k === dayKey(new Date())) { n++; d.setDate(d.getDate() - 1); }
+      else break;
+    }
+    return n;
+  }
+  function statsBarsHtml(st, days) {
+    const vals = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const k = dayKey(d);
+      vals.push({ key: k, label: (d.getMonth() + 1) + '/' + d.getDate(), sec: Number((st.daily[k] || {}).seconds || 0) });
+    }
+    const max = Math.max(60, ...vals.map(v => v.sec));
+    return '<div class="stat-bars">' + vals.map((v, i) => '<div class="stat-bar-wrap" title="' + v.key + ' · ' + fmtDuration(v.sec) + '"><div class="stat-bar" style="height:' + Math.max(4, Math.round(v.sec / max * 100)) + '%"></div><span>' + (days <= 14 || i % 3 === 0 ? v.label : '') + '</span></div>').join('') + '</div>';
+  }
+  function statsView() {
+    const st = loadStats();
+    const t = statsTotals(st);
+    const books = Object.keys(st.books).map(k => Object.assign({ key: k }, st.books[k])).sort((a, b) => (b.seconds || 0) - (a.seconds || 0));
+    const today = st.daily[dayKey()] || {};
+    const statusCount = { want: 0, reading: 0, read: 0, dropped: 0 };
+    shelf.forEach(x => { if (statusCount[x.status] != null) statusCount[x.status]++; });
+    const progressList = shelf.slice().sort((a, b) => ((progress[b.key] || {}).updatedAt || 0) - ((progress[a.key] || {}).updatedAt || 0)).slice(0, 6);
+    const body = '<div class="stats-hero"><div><b>' + fmtDuration(t.seconds) + '</b><span>累计阅读</span></div><div><b>' + t.chapters + '</b><span>累计章节</span></div><div><b>' + t.activeDays + '</b><span>阅读天数</span></div><div><b>' + statsStreak(st) + '</b><span>连续天数</span></div></div>'
+      + '<div class="stat-card"><div class="card-title"><b>本月阅读趋势</b><span>今天 ' + fmtDuration(today.seconds) + '</span></div>' + statsBarsHtml(st, new Date().getDate()) + '</div>'
+      + '<div class="stat-card"><div class="card-title"><b>阅读最多</b><span>按累计时长</span></div>'
+      + (books.length ? books.slice(0, 5).map((x, i) => '<div class="rank-row"><span class="rank">' + (i + 1) + '</span><div class="rank-main"><b>' + esc(x.title || '未知作品') + '</b><span>' + (x.chapters || 0) + ' 章</span></div><span class="rank-time">' + fmtDuration(x.seconds || 0) + '</span></div>').join('') : '<div class="empty small">还没有阅读记录</div>') + '</div>'
+      + '<div class="stat-card"><div class="card-title"><b>书架状态</b><span>' + shelf.length + ' 本</span></div><div class="status-grid">'
+      + [['want', '想读'], ['reading', '在读'], ['read', '已读'], ['dropped', '弃读']].map(x => '<div><b>' + statusCount[x[0]] + '</b><span>' + x[1] + '</span></div>').join('') + '</div></div>'
+      + '<div class="stat-card"><div class="card-title"><b>阅读进度</b><span>最近阅读</span></div>'
+      + (progressList.length ? progressList.map(x => { const p = progress[x.key] || {}; const pct = Math.round((p.percent || 0) * 100); return '<button class="stat-progress" data-action="shelf-read" data-key="' + esc(x.key) + '"><span>' + esc(x.title) + '</span><i><b style="width:' + pct + '%"></b></i><em>' + pct + '%</em></button>'; }).join('') : '<div class="empty small">还没有阅读进度</div>') + '</div>'
+      + '<button class="btn btn-primary btn-block" data-action="annual-report">生成年度阅读报告</button>';
+    return { html: shell(topbar({ back: true, title: '阅读统计', sub: '你的阅读轨迹' }) + body, null), tab: null };
+  }
+  function annualReport() {
+    const st = loadStats(); const t = statsTotals(st); const year = new Date().getFullYear();
+    const books = Object.keys(st.books).map(k => Object.assign({ key: k }, st.books[k])).sort((a, b) => (b.seconds || 0) - (a.seconds || 0));
+    const months = [];
+    for (let m = 0; m < 12; m++) { let sec = 0; Object.keys(st.daily).forEach(k => { if (k.indexOf(year + '-' + String(m + 1).padStart(2, '0')) === 0) sec += Number(st.daily[k].seconds || 0); }); months.push(sec); }
+    const max = Math.max(60, ...months);
+    const text = `Novelia ${year} 阅读报告
+累计阅读：${fmtDuration(t.seconds)}
+累计章节：${t.chapters} 章
+阅读天数：${t.activeDays} 天
+阅读最多：${books[0] ? books[0].title : '暂无'}
+—— 用 Novelia 把喜欢的故事留在手机里。`;
+    showSheet('<h2>' + year + ' 阅读报告</h2><p class="sheet-sub">你的这一年，藏在故事里。</p>'
+      + '<div class="annual-hero"><b>' + fmtDuration(t.seconds) + '</b><span>累计阅读时长</span><div><em>' + t.chapters + '</em> 章 · <em>' + t.activeDays + '</em> 天</div></div>'
+      + '<div class="annual-bars">' + months.map((sec, i) => '<div><i style="height:' + Math.max(3, Math.round(sec / max * 100)) + '%"></i><span>' + (i + 1) + '月</span></div>').join('') + '</div>'
+      + '<div class="annual-top"><span>阅读最多</span><b>' + esc(books[0] ? books[0].title : '还没有记录') + '</b><span>' + (books[0] ? fmtDuration(books[0].seconds) : '') + '</span></div>'
+      + '<div class="sheet-actions"><button class="btn btn-ghost" data-action="close-sheet">关闭</button><button class="btn btn-primary" data-action="share-report" data-text="' + esc(text) + '">分享报告</button></div>');
+  }
   /* ------------------------------------------------------------------ *
    *  Downloads
    * ------------------------------------------------------------------ */
@@ -1688,6 +1933,12 @@
       + settingRow('book', '书架与进度', shelf.length + ' 本收藏 · ' + Object.keys(progress).length + ' 本有进度', 'go-shelf', 'chevron')
       + '</div></div>'
 
+      + '<div class="setting-group"><h3>书架与订阅</h3><div class="setting-card">'
+      + '<div class="setting-row"><div class="si">' + icon('bookmark') + '</div><div class="st"><b>收藏自动订阅</b><span>收藏新书时默认检查新章节</span></div><button class="switch ' + (settings.autoSubscribe !== false ? 'on' : '') + '" data-action="toggle-auto-subscribe"></button></div>'
+      + '<div class="setting-row"><div class="si">' + icon('refresh') + '</div><div class="st"><b>自动检查订阅</b><span>启动时检查已订阅书籍的新章节</span></div><button class="switch ' + (settings.autoCheckShelf !== false ? 'on' : '') + '" data-action="toggle-auto-check"></button></div>'
+      + '<div class="setting-row"><div class="si">' + icon('download') + '</div><div class="st"><b>自动下载新增章节</b><span>只下载新增部分，不动已有缓存</span></div><button class="switch ' + (settings.autoDownloadNew ? 'on' : '') + '" data-action="toggle-auto-download"></button></div>'
+      + settingRow('star', '阅读统计', '阅读时长、章节、趋势和年度报告', 'go-stats', 'chevron')
+      + '</div></div>'
       + '<div class="setting-group"><h3>账号</h3><div class="setting-card">'
       + settingRow('user', state.auth.loggedIn ? '已登录' : '登录原站账号', state.auth.loggedIn ? (state.auth.user + ' · 注册约 ' + (state.auth.ageDays || 0) + ' 天') : '登录后可开启 R18 原生阅读；账号需满足原站权限', 'open-login', 'chevron')
       + '</div></div>'
@@ -1734,7 +1985,7 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.4.31', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.5.0', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
@@ -1742,7 +1993,7 @@
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<div class="note" style="text-align:left;margin:8px 0 0">按首次安装匿名计数，不收集账号或阅读内容；公开计数器可能被刷，仅作参考。</div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
-      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.4.31', '1.4.28')) + '</span></div>'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.5.0', '1.5.0')) + '</span></div>'
       + '<div class="sv">' + icon('right') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="open-feedback">'
       + '<div class="si">' + icon('edit') + '</div><div class="st"><b>问题反馈</b><span>Bug、建议、内容问题，提交到 GitHub Issues</span></div>'
@@ -2253,6 +2504,18 @@
         if (p) openFromProgress(p);
         break;
       }
+      case 'toggle-auto-subscribe':
+        settings.autoSubscribe = settings.autoSubscribe === false;
+        saveSettings(); render(); toast(settings.autoSubscribe ? '收藏将自动订阅' : '收藏不再自动订阅');
+        break;
+      case 'toggle-auto-check':
+        settings.autoCheckShelf = settings.autoCheckShelf === false;
+        saveSettings(); render(); toast(settings.autoCheckShelf ? '启动时会检查更新' : '已关闭自动检查');
+        break;
+      case 'toggle-auto-download':
+        settings.autoDownloadNew = !settings.autoDownloadNew;
+        saveSettings(); render(); toast(settings.autoDownloadNew ? '新增章节会自动下载' : '已关闭自动下载');
+        break;
       case 'toggle-shelf':
         toggleShelfCurrent();
         break;
@@ -2265,6 +2528,102 @@
       case 'shelf-read':
         shelfRead(key);
         break;
+      case 'go-stats':
+        navigate('#/stats');
+        break;
+      case 'annual-report':
+        annualReport();
+        break;
+      case 'share-report':
+        if (native && native.share) native.share(el.getAttribute('data-text') || '');
+        else if (navigator.share) navigator.share({ text: el.getAttribute('data-text') || '' }).catch(() => {});
+        break;
+      case 'shelf-check':
+        checkShelfUpdates(true);
+        break;
+      case 'shelf-manage-toggle':
+        state.shelfManage = !state.shelfManage;
+        state.shelfSelected = new Set();
+        render();
+        break;
+      case 'shelf-filter': {
+        const kind = el.getAttribute('data-kind') || 'status';
+        const val = el.getAttribute('data-value') || 'all';
+        if (kind === 'cat') state.shelfFilter.cat = val;
+        else state.shelfFilter.status = val;
+        render();
+        break;
+      }
+      case 'shelf-add-category': {
+        const name = String(prompt('新分类名称') || '').trim();
+        if (name && categories.indexOf(name) < 0) { categories.push(name); saveShelf(); render(); }
+        break;
+      }
+      case 'shelf-select': {
+        const k = el.getAttribute('data-key');
+        if (state.shelfSelected.has(k)) state.shelfSelected.delete(k); else state.shelfSelected.add(k);
+        render();
+        break;
+      }
+      case 'shelf-card':
+        if (state.shelfManage) {
+          const k = el.getAttribute('data-key');
+          if (state.shelfSelected.has(k)) state.shelfSelected.delete(k); else state.shelfSelected.add(k);
+          render();
+        }
+        break;
+      case 'shelf-select-all':
+        if (state.shelfSelected.size === shelfFiltered().length) state.shelfSelected = new Set();
+        else state.shelfSelected = new Set(shelfFiltered().map(x => x.key));
+        render();
+        break;
+      case 'shelf-edit':
+        openShelfEdit(key);
+        break;
+      case 'save-shelf-edit':
+        saveShelfEdit(key);
+        break;
+      case 'toggle-se-sub': {
+        const b = $('#se-sub'); if (b) b.classList.toggle('on');
+        break;
+      }
+      case 'toggle-se-auto': {
+        const b = $('#se-auto'); if (b) b.classList.toggle('on');
+        break;
+      }
+      case 'bulk-category':
+        openBulkSheet('category');
+        break;
+      case 'bulk-status':
+        openBulkSheet('status');
+        break;
+      case 'apply-bulk-category': {
+        const c = el.getAttribute('data-value') || '未分类';
+        shelf.forEach(x => { if (state.shelfSelected.has(x.key)) x.category = c; });
+        saveShelf(); closeSheet(); render(); toast('已修改分类');
+        break;
+      }
+      case 'apply-bulk-status': {
+        const v = el.getAttribute('data-value') || 'want';
+        shelf.forEach(x => { if (state.shelfSelected.has(x.key)) x.status = v; });
+        saveShelf(); closeSheet(); render(); toast('已修改状态');
+        break;
+      }
+      case 'bulk-subscribe':
+        if (!state.shelfSelected.size) { toast('先选择书籍'); break; }
+        shelf.forEach(x => { if (state.shelfSelected.has(x.key)) { x.subscribe = true; x.newChapters = x.newChapters || 0; } });
+        saveShelf(); render(); toast('已恢复订阅');
+        break;
+      case 'bulk-remove': {
+        if (!state.shelfSelected.size) { toast('先选择书籍'); break; }
+        const ok = await confirmDialog('批量移出', '将移出 ' + state.shelfSelected.size + ' 本书，阅读进度和下载保留。', '移出', true);
+        if (ok) {
+          shelf = shelf.filter(x => !state.shelfSelected.has(x.key));
+          state.shelfSelected = new Set();
+          saveShelf(); render(); toast('已移出');
+        }
+        break;
+      }
       case 'shelf-open': {
         const item = shelfBook(key);
         if (item) navigate('#/book/' + encodePath(item.provider) + '/' + encodePath(item.novel));
@@ -2274,7 +2633,7 @@
         const item = shelfBook(key);
         if (!item) break;
         const ok = await confirmDialog('移出书架', '只会移除收藏，阅读进度和已下载文件都会保留。', '移出', true);
-        if (ok) { shelf = shelf.filter(x => x.key !== key); saveJSON('nr.shelf', shelf); toast('已移出书架'); render(); }
+        if (ok) { shelf = shelf.filter(x => x.key !== key); state.shelfSelected.delete(key); saveShelf(); toast('已移出书架'); render(); }
         break;
       }
       case 'refresh-downloads':
@@ -2415,6 +2774,11 @@
           state.autoUpdateChecked = false;
           render();
           setTimeout(maybeAutoCheckUpdate, 300);
+    setTimeout(() => {
+      if (!settings.autoCheckShelf || state.locked || !shelf.some(x => x.subscribe)) return;
+      let last = 0; try { last = Number(localStorage.getItem('nr.subCheckAt') || 0) || 0; } catch (e) {}
+      if (Date.now() - last > 30 * 60 * 1000) checkShelfUpdates(false);
+    }, 5000);
         } else {
           const err = $('#lock-error');
           if (err) err.textContent = 'PIN 不正确';
@@ -2667,7 +3031,13 @@
     }
   });
   document.addEventListener('input', e => {
-    if (e.target && e.target.id === 'toc-search') {
+    if (e.target && e.target.id === 'shelf-q') {
+      state.shelfFilter.q = e.target.value;
+      const cards = $('.shelf-filtered-list');
+      render();
+      const input = $('#shelf-q');
+      if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+    } else if (e.target && e.target.id === 'toc-search') {
       state.tocQuery = e.target.value;
       state.tocLimit = 120;
       const list = $('#toc-list');
@@ -2685,6 +3055,15 @@
     }
   });
   document.addEventListener('change', e => {
+    if (e.target && e.target.id === 'shelf-cat') {
+      state.shelfFilter.cat = e.target.value; render(); return;
+    }
+    if (e.target && e.target.id === 'shelf-tag') {
+      state.shelfFilter.tag = e.target.value; render(); return;
+    }
+    if (e.target && e.target.id === 'shelf-sort') {
+      state.shelfFilter.sort = e.target.value; render(); return;
+    }
     if (e.target && e.target.id === 'rs-engine') {
       setReaderSetting('engine', e.target.value);
     } else if (e.target && e.target.id === 'rs-animation') {
@@ -2717,6 +3096,16 @@
     shelf = loadJSON('nr.shelf', []) || [];
     progress = loadJSON('nr.progress', {}) || {};
     recent = loadJSON('nr.recent', []) || [];
+    normalizeShelf();
+    shelf.forEach(x => {
+      const p = progress[x.key];
+      if (p && p.chapterId) {
+        x.lastReadAt = Math.max(x.lastReadAt || 0, p.updatedAt || 0);
+        if (p.percent >= 0.995) x.status = 'read';
+        else if (x.status === 'want') x.status = 'reading';
+      }
+    });
+    saveShelf();
     applyTheme();
     refreshDownloads();
     if (state.route.name === 'home' || state.route.name === 'shelf' || state.route.name === 'downloads' || state.route.name === 'settings') render();
@@ -2728,6 +3117,7 @@
    * ------------------------------------------------------------------ */
   try {
     applyTheme();
+    normalizeShelf();
     loadAuth();
     loadPrivacy();
     if (state.privacy.hasPin) state.locked = true;
@@ -2735,6 +3125,11 @@
     state.route = parseRoute();
     onRoute();
     setTimeout(maybeAutoCheckUpdate, 300);
+    setTimeout(() => {
+      if (!settings.autoCheckShelf || state.locked || !shelf.some(x => x.subscribe)) return;
+      let last = 0; try { last = Number(localStorage.getItem('nr.subCheckAt') || 0) || 0; } catch (e) {}
+      if (Date.now() - last > 30 * 60 * 1000) checkShelfUpdates(false);
+    }, 5000);
   } catch (e) {
     try {
       var box = document.createElement('div');

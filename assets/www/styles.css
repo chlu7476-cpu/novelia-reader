@@ -719,3 +719,86 @@ input:focus, select:focus, textarea:focus { border-color: color-mix(in srgb, var
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
   #app.route-anim .page { animation: none !important; }
 }
+
+/* ---------- shelf tools / subscription (1.5.0) ---------- */
+.shelf-tools { display: flex; gap: 8px; align-items: center; margin: 4px 0 8px; }
+.shelf-search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; padding: 0 11px; height: 40px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.shelf-search svg { width: 16px; height: 16px; color: var(--faint); flex: none; }
+.shelf-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 12px; }
+.shelf-tools .btn { flex: none; white-space: nowrap; }
+.shelf-chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 8px; scrollbar-width: none; }
+.shelf-chips::-webkit-scrollbar { display: none; }
+.shelf-chips .chip { flex: none; }
+.shelf-filter-row { display: flex; gap: 6px; margin-bottom: 6px; }
+.shelf-filter-row select { flex: 1; min-width: 0; height: 34px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--muted); font-size: 11px; padding: 0 8px; }
+.shelf-cat-row { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; }
+.shelf-cat-row::-webkit-scrollbar { display: none; }
+.chip.mini { font-size: 10px; padding: 5px 9px; flex: none; }
+.chip.mini.add { border-style: dashed; color: var(--primary); }
+.update-strip { background: linear-gradient(135deg, var(--primary-soft), color-mix(in srgb, var(--gold-soft) 55%, var(--surface))); border: 1px solid color-mix(in srgb, var(--primary) 16%, transparent); border-radius: 18px; padding: 12px; margin: 0 0 12px; }
+.update-strip-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 8px; }
+.update-strip-head span { color: var(--muted); font-size: 10px; }
+.update-chip { display: flex; justify-content: space-between; gap: 10px; width: 100%; text-align: left; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--surface) 72%, transparent); margin-top: 5px; font-size: 11.5px; }
+.update-chip span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.update-chip b { color: var(--primary); flex: none; font-size: 10.5px; }
+.shelf-title-row { display: flex; align-items: flex-start; gap: 6px; }
+.shelf-title-row h3 { flex: 1; }
+.shelf-new { flex: none; font-size: 9.5px; color: var(--primary); background: var(--primary-soft); padding: 2px 6px; border-radius: 6px; margin-top: 2px; }
+.shelf-badges { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0 5px; }
+.shelf-pill { font-size: 9px; padding: 2px 6px; border-radius: 5px; background: var(--surface-2); color: var(--muted); }
+.shelf-pill.want { background: var(--gold-soft); color: var(--gold); }
+.shelf-pill.reading { background: var(--primary-soft); color: var(--primary); }
+.shelf-pill.read { background: var(--surface-2); color: var(--muted); }
+.shelf-pill.dropped { background: var(--danger-soft); color: var(--danger); }
+.shelf-cat, .shelf-tag, .shelf-sub { font-size: 9px; padding: 2px 6px; border-radius: 5px; background: var(--surface-2); color: var(--faint); }
+.shelf-sub { color: var(--primary); background: var(--primary-soft); }
+.shelf-sub.off { color: var(--faint); background: var(--surface-2); }
+.shelf-check { position: absolute; left: 8px; top: 8px; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--line-strong); background: var(--surface); color: #fff; display: grid; place-items: center; z-index: 2; }
+.shelf-check.on { background: var(--primary); border-color: var(--primary); }
+.shelf-check svg { width: 14px; height: 14px; }
+.shelf-card { position: relative; }
+.shelf-card.selected { border-color: color-mix(in srgb, var(--primary) 45%, var(--line)); background: color-mix(in srgb, var(--primary-soft) 50%, var(--surface)); }
+.bulk-bar { position: sticky; top: calc(58px + var(--sat)); z-index: 20; display: flex; align-items: center; gap: 10px; background: var(--ink, #143b28); color: #fff; border-radius: 12px; padding: 8px 10px; margin-bottom: 10px; font-size: 11px; overflow-x: auto; }
+.bulk-bar span { flex: 1; white-space: nowrap; }
+.bulk-bar button { color: #fff; font-size: 11px; white-space: nowrap; opacity: .9; }
+.bulk-bar button.danger { color: #ffb4ad; }
+
+/* ---------- stats (1.5.0) ---------- */
+.stats-hero { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 6px 0 12px; }
+.stats-hero > div { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 15px; box-shadow: var(--shadow-soft); }
+.stats-hero b { display: block; font-size: 24px; letter-spacing: -.5px; }
+.stats-hero span { font-size: 10.5px; color: var(--faint); }
+.stat-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 14px 15px; margin-bottom: 10px; box-shadow: var(--shadow-soft); }
+.stat-bars { display: flex; align-items: flex-end; gap: 4px; height: 120px; padding-top: 12px; }
+.stat-bar-wrap { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
+.stat-bar { width: 100%; max-width: 18px; border-radius: 4px 4px 2px 2px; background: linear-gradient(180deg, var(--primary-2), var(--primary)); min-height: 3px; }
+.stat-bar-wrap span { font-size: 8px; color: var(--faint); white-space: nowrap; transform: scale(.9); }
+.rank-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.rank-row:last-child { border-bottom: 0; }
+.rank { width: 20px; font-size: 11px; color: var(--faint); font-weight: 700; }
+.rank-main { flex: 1; min-width: 0; }
+.rank-main b { display: block; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-main span { font-size: 9.5px; color: var(--faint); }
+.rank-time { font-size: 10px; color: var(--muted); flex: none; }
+.status-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border-radius: 12px; overflow: hidden; }
+.status-grid div { background: var(--surface); padding: 10px 4px; text-align: center; }
+.status-grid b { display: block; font-size: 17px; }
+.status-grid span { font-size: 9.5px; color: var(--faint); }
+.stat-progress { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 8px 0; font-size: 11px; }
+.stat-progress > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat-progress i { width: 64px; height: 4px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.stat-progress i b { display: block; height: 100%; background: var(--primary); border-radius: 4px; }
+.stat-progress em { width: 30px; text-align: right; font-style: normal; font-size: 9.5px; color: var(--faint); }
+.annual-hero { text-align: center; padding: 8px 0 16px; }
+.annual-hero > b { display: block; font-size: 34px; letter-spacing: -1px; }
+.annual-hero > span { font-size: 11px; color: var(--faint); }
+.annual-hero > div { margin-top: 8px; font-size: 12px; color: var(--muted); }
+.annual-hero em { font-style: normal; color: var(--primary); font-weight: 700; font-size: 18px; }
+.annual-bars { display: flex; align-items: flex-end; gap: 4px; height: 130px; }
+.annual-bars > div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
+.annual-bars i { width: 100%; max-width: 18px; border-radius: 4px 4px 2px 2px; background: linear-gradient(180deg, var(--primary-2), var(--primary)); min-height: 3px; }
+.annual-bars span { font-size: 8px; color: var(--faint); }
+.annual-top { text-align: center; margin: 14px 0 2px; }
+.annual-top span { display: block; font-size: 10px; color: var(--faint); }
+.annual-top b { display: block; font-size: 15px; margin: 2px 0; }
+.empty.small { padding: 24px 0; text-align: center; font-size: 11px; color: var(--faint); }

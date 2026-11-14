@@ -227,3 +227,15 @@ body.bars-hidden .reader-bottom { transform: translateY(110%); }
 
 .article figure { break-inside: avoid; }
 .article figure img { max-width: 100%; max-height: 62vh; object-fit: contain; margin: 0 auto; }
+
+/* ---------- reading modes / custom (1.5.0) ---------- */
+.reader-content.scroll-layout { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; padding-bottom: calc(28vh + var(--sab)); }
+.reader-content.scroll-layout .reader-pages { height: auto !important; width: 100% !important; column-width: auto !important; column-gap: 0 !important; transform: none !important; transition: none !important; will-change: auto; }
+.reader-content.vertical-layout { scroll-snap-type: y proximity; }
+.reader-content.vertical-layout .article > * { scroll-snap-align: start; }
+.reader-content.scroll-layout::-webkit-scrollbar { width: 0; }
+.gesture-row { display: flex; align-items: center; gap: 10px; margin: 7px 0; }
+.gesture-row > span { flex: none; width: 64px; font-size: 11px; color: var(--r-muted); }
+.gesture-row .r-select { flex: 1; margin: 0; }
+.r-mini { font-size: 10px; padding: 5px 9px; border-radius: 7px; background: var(--r-soft); color: var(--r-muted); margin-left: 6px; }
+#reader-bg { border: 1px solid var(--r-line) !important; padding: 0; }

@@ -1,8 +1,8 @@
 {
-  "versionCode": 46,
-  "versionName": "1.4.31",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.4.31.apk",
-  "notes": "1. 进入软件约 0.3 秒立即检查更新\n2. 有新版本直接弹出更新提示\n3. 隐私锁解锁后也会立即检查\n4. 保留手动检查更新",
-  "size": 123929,
-  "sha256": "aad6c669e2b83c38683297fec23006c44c1b49a47a7688538288e0e44e4643fd"
+  "versionCode": 47,
+  "versionName": "1.5.0",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.5.0.apk",
+  "notes": "1. 收藏自动订阅、新章节检查与只下载新增章节\n2. 更新集中展示、暂停订阅、批量管理\n3. 自定义分类、标签、想读/在读/已读/弃读、排序和书架搜索\n4. 阅读时长、章节、每日记录、阅读最多、本月趋势和年度报告\n5. 滚动/左右/上下翻页、自动翻页、进度百分比\n6. 章节内搜索、复制本章、分享\n7. 自定义字体、背景色、左右/中间/右侧手势",
+  "size": 136217,
+  "sha256": "df7b02bd975c4b3285b1d1ba215daf6f2efa07351b744fd61d785accde259e83"
 }

@@ -9,7 +9,7 @@
 
   const DEFAULT_SETTINGS = {
     theme: 'auto',
-    reader: { mode: 'zh', engine: 'auto', fontSize: 18, lineHeight: 1.8, theme: 'paper', serif: false, animation: 'slide', brightness: -1, keepAwake: true }
+    reader: { mode: 'zh', engine: 'auto', fontSize: 18, lineHeight: 1.8, theme: 'paper', serif: false, animation: 'slide', brightness: -1, keepAwake: true, layout: 'page', autoTurn: 0, bg: '', tapLeft: 'prev', tapRight: 'next', tapCenter: 'menu' }
   };
   function loadJSON(k, d) {
     try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; }
@@ -104,6 +104,9 @@
   let pendingRestore = null;
   let suppressClickUntil = 0;
   let barsTimer = null;
+  let stats = loadJSON('nr.stats', {}) || {};
+  let statsStart = Date.now();
+  let statsTimer = null;
 
   function bookTitle() {
     if (chapter && (chapter.novelTitleZh || chapter.novelTitleJp)) return chapter.novelTitleZh || chapter.novelTitleJp;
@@ -131,6 +134,53 @@
     return best;
   }
 
+  /* ---------------- reading stats ---------------- */
+  function dayKey(d) {
+    const x = d || new Date();
+    return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+  }
+  function ensureStats() {
+    if (!stats.daily) stats.daily = {};
+    if (!stats.books) stats.books = {};
+    if (!stats.chapters) stats.chapters = {};
+  }
+  function flushStats(force) {
+    ensureStats();
+    const now = Date.now();
+    let sec = Math.round((now - statsStart) / 1000);
+    if (!force && sec < 5) return;
+    if (sec < 0) sec = 0;
+    statsStart = now;
+    if (!sec) return;
+    const k = dayKey();
+    const d = stats.daily[k] || (stats.daily[k] = { seconds: 0, chapters: 0 });
+    d.seconds += sec;
+    const bk = stats.books[key] || (stats.books[key] = { title: bookTitle() || '', seconds: 0, chapters: 0, lastAt: 0 });
+    bk.seconds += sec;
+    bk.lastAt = now;
+    if (!bk.title) bk.title = bookTitle() || '';
+    stats.totalSeconds = (Number(stats.totalSeconds) || 0) + sec;
+    saveJSON('nr.stats', stats);
+  }
+  function startStatsTimer() {
+    statsStart = Date.now();
+    clearInterval(statsTimer);
+    statsTimer = setInterval(() => flushStats(true), 20000);
+  }
+  function markChapterRead() {
+    ensureStats();
+    if (!chapterId) return;
+    const ids = stats.chapters[key] || (stats.chapters[key] = []);
+    if (ids.indexOf(chapterId) >= 0) return;
+    ids.push(chapterId);
+    const k = dayKey();
+    const d = stats.daily[k] || (stats.daily[k] = { seconds: 0, chapters: 0 });
+    d.chapters += 1;
+    const bk = stats.books[key] || (stats.books[key] = { title: bookTitle() || '', seconds: 0, chapters: 0, lastAt: 0 });
+    bk.chapters = ids.length;
+    bk.title = bk.title || bookTitle() || '';
+    saveJSON('nr.stats', stats);
+  }
   /* ---------------- load ---------------- */
   async function init() {
     applyStyle();
@@ -174,6 +224,7 @@
       if (!chapterId) throw new ApiError(0, '这本书还没有可阅读的译文章节');
       await loadChapter(chapterId, index, initial);
       initial = false;
+      startStatsTimer();
     } catch (e) {
       showError('无法打开这一章', e.message || '请检查网络，或在设置中配置代理后重试。');
     }
@@ -217,6 +268,7 @@
       pendingRestore = isInitial ? restorePercent : 0;
       showBarsOnNextRender = !!isInitial;
       render();
+      markChapterRead();
       updateUrl();
       setTimeout(prefetchNext, 500);
     } catch (e) {
@@ -238,6 +290,32 @@
       + '<button class="r-btn ghost" data-act="back">返回</button></div></div>';
   }
 
+  /* ---------------- layout / auto turn ---------------- */
+  function isScrollLayout() { return settings.reader.layout === 'scroll' || settings.reader.layout === 'vertical'; }
+  function applyLayoutClasses() {
+    const pages = $('#reader-pages');
+    if (!pages) return;
+    const scroll = isScrollLayout();
+    contentEl.classList.toggle('scroll-layout', scroll);
+    contentEl.classList.toggle('vertical-layout', settings.reader.layout === 'vertical');
+    document.body.classList.toggle('scroll-layout-body', scroll);
+    if (!scroll) contentEl.scrollTop = 0;
+  }
+  let autoTimer = null;
+  function clearAutoTurn() { clearTimeout(autoTimer); autoTimer = null; }
+  function scheduleAutoTurn() {
+    clearAutoTurn();
+    const sec = Number(settings.reader.autoTurn || 0);
+    if (!sec || sheetKind || !chapter) return;
+    autoTimer = setTimeout(() => { nextPage(); }, sec * 1000);
+  }
+  function tapAction(action) {
+    if (action === 'menu') toggleBars();
+    else if (action === 'next') nextPage();
+    else if (action === 'prev') prevPage();
+    else if (action === 'toc') openToc();
+    else if (action === 'settings') openSettings();
+  }
   /* ---------------- render ---------------- */
   function render() {
     if (!chapter) return;
@@ -268,6 +346,7 @@
       + '</div>';
     contentEl.innerHTML = '<div class="reader-pages" id="reader-pages">' + head + art + end + '</div>';
     applyStyle();
+    applyLayoutClasses();
     const keep = pendingRestore != null ? pendingRestore : currentPercent();
     pendingRestore = null;
     layoutPages(keep);
@@ -279,6 +358,10 @@
   }
 
   function currentPercent() {
+    if (isScrollLayout()) {
+      const max = contentEl.scrollHeight - contentEl.clientHeight;
+      return max > 4 ? Math.max(0, Math.min(1, contentEl.scrollTop / max)) : 0;
+    }
     return totalPages > 1 ? page / (totalPages - 1) : 0;
   }
 
@@ -289,8 +372,26 @@
     pagesEl.style.transition = 'none';
     pagesEl.style.opacity = '1';
     pagesEl.style.transform = 'translateX(0px)';
+    if (isScrollLayout()) {
+      pagesEl.style.width = '100%';
+      pagesEl.style.height = 'auto';
+      pagesEl.style.columnWidth = 'auto';
+      pagesEl.style.columnGap = '0';
+      const vh = Math.max(1, contentEl.clientHeight);
+      totalPages = Math.max(1, Math.ceil(pagesEl.scrollHeight / vh));
+      pageStep = vh;
+      const target = Math.max(0, Math.min(totalPages - 1, Math.round((keep || 0) * (totalPages - 1))));
+      setPage(target, false);
+      attachImageRelayout();
+      scheduleAutoTurn();
+      return;
+    }
+    contentEl.scrollTop = 0;
+    pagesEl.style.width = '100%';
+    pagesEl.style.height = '100%';
     const w = Math.max(1, pagesEl.clientWidth);
     pagesEl.style.columnWidth = w + 'px';
+    pagesEl.style.columnGap = '42px';
     const cs = getComputedStyle(pagesEl);
     const gap = parseFloat(cs.columnGap) || 42;
     const sw = pagesEl.scrollWidth;
@@ -300,12 +401,19 @@
     setPage(target, false);
     pagesEl.style.transition = '';
     attachImageRelayout();
+    scheduleAutoTurn();
   }
 
   function setPage(p, animate) {
     const pagesEl = $('#reader-pages');
     if (!pagesEl) return;
     page = Math.max(0, Math.min(totalPages - 1, p | 0));
+    if (isScrollLayout()) {
+      pageStep = Math.max(1, contentEl.clientHeight);
+      contentEl.scrollTo({ top: page * pageStep, behavior: animate ? 'smooth' : 'auto' });
+      updateNav(); updateProgressUI(); updateTopProgress(); scheduleAutoTurn();
+      return;
+    }
     const target = 'translateX(' + (-page * pageStep) + 'px)';
     const anim = settings.reader.animation || 'slide';
     clearTimeout(fadeTimer);
@@ -333,11 +441,13 @@
     updateProgressUI();
     updateTopProgress();
     if (animate && !document.body.classList.contains('bars-hidden')) scheduleBarsHide();
+    scheduleAutoTurn();
   }
 
   function relayout() {
     const pct = currentPercent();
     applyStyle();
+    applyLayoutClasses();
     requestAnimationFrame(() => layoutPages(pct));
   }
 
@@ -446,7 +556,7 @@
   function updateProgressUI() {
     const pct = currentPercent();
     const label = $('#pct-label');
-    if (label) label.textContent = (page + 1) + '/' + totalPages;
+    if (label) label.textContent = Math.round(pct * 100) + '%';
     const bar = $('#read-progress');
     if (bar) bar.style.width = (pct * 100) + '%';
     saveProgressDebounced(pct);
@@ -554,6 +664,7 @@
     sheetEl.classList.remove('show');
     scrimEl.classList.remove('show');
     document.body.classList.remove('sheet-open');
+    scheduleAutoTurn();
   }
   function tocRows() {
     const q = tocFilter.trim().toLowerCase();
@@ -675,6 +786,22 @@
       toast('开始朗读');
     } catch (e) { toast('朗读启动失败'); }
   }
+  function chapterPlainText() {
+    if (!chapter) return '';
+    const jp = Array.isArray(chapter.paragraphs) ? chapter.paragraphs : [];
+    const zh = Array.isArray(chapter[engine + 'Paragraphs']) ? chapter[engine + 'Paragraphs'] : [];
+    const mode = settings.reader.mode || 'zh';
+    const arr = mode === 'jp' ? jp : (mode === 'both' ? [] : (zh.some(x => String(x || '').trim()) ? zh : jp));
+    if (mode === 'both') {
+      const out = [];
+      for (let i = 0; i < Math.max(jp.length, zh.length); i++) {
+        if (jp[i]) out.push(String(jp[i]));
+        if (zh[i]) out.push(String(zh[i]));
+      }
+      return out.filter(x => x && !/^!\[[^\]]*\]\(/.test(x)).join('\n');
+    }
+    return arr.map(x => String(x == null ? '' : x).trim()).filter(x => x && !/^!\[[^\]]*\]\(/.test(x)).join('\n');
+  }
   function settingsSheetHtml() {
     const r = settings.reader;
     const modes = [['zh', '译文'], ['jp', '原文'], ['both', '双语']];
@@ -682,6 +809,8 @@
     return '<h2>阅读设置</h2><p class="s-sub">修改会立即生效，并记住到下一章。</p>'
       + '<div class="set-group"><label>显示方式</label><div class="seg">'
       + modes.map(m => '<button data-set="mode" data-value="' + m[0] + '" class="' + (r.mode === m[0] ? 'active' : '') + '">' + m[1] + '</button>').join('') + '</div></div>'
+      + '<div class="set-group"><label>阅读模式</label><div class="seg">'
+      + [['page', '左右翻页'], ['scroll', '滚动'], ['vertical', '上下翻页']].map(m => '<button data-set="layout" data-value="' + m[0] + '" class="' + ((r.layout || 'page') === m[0] ? 'active' : '') + '">' + m[1] + '</button>').join('') + '</div></div>'
       + '<div class="set-group"><label>译文引擎</label><select class="r-select" id="engine-select">'
       + [['auto', '自动选择（推荐）'], ['sakura', 'Sakura'], ['gpt', 'GPT'], ['youdao', '有道'], ['baidu', '百度']].map(e => '<option value="' + e[0] + '"' + (r.engine === e[0] ? ' selected' : '') + '>' + e[1] + '</option>').join('')
       + '</select></div>'
@@ -696,9 +825,21 @@
       + '<select class="r-select" id="anim-select" style="margin-bottom:8px">'
       + [['slide', '滑动翻页'], ['fade', '淡入翻页'], ['none', '无动画']].map(a => '<option value="' + a[0] + '"' + ((r.animation || 'slide') === a[0] ? ' selected' : '') + '>' + a[1] + '</option>').join('')
       + '</select>'
+      + '<select class="r-select" id="auto-turn" style="margin-bottom:8px">'
+      + [['0', '不自动翻页'], ['5', '每 5 秒'], ['10', '每 10 秒'], ['20', '每 20 秒'], ['30', '每 30 秒']].map(a => '<option value="' + a[0] + '"' + (String(r.autoTurn || 0) === a[0] ? ' selected' : '') + '>' + a[1] + '</option>').join('')
+      + '</select>'
       + '<div class="row-between"><div><b>亮度</b><span id="bright-num">' + (r.brightness > 0 ? Math.round(r.brightness * 100) + '%' : '跟随系统') + '</span></div></div>'
       + '<input class="r-range" id="brightness-range" type="range" min="0" max="100" step="5" value="' + (r.brightness > 0 ? Math.round(r.brightness * 100) : 0) + '">'
       + '<div class="row-between"><div><b>屏幕常亮</b><span>阅读时不清屏</span></div><button class="r-switch ' + (r.keepAwake !== false ? 'on' : '') + '" data-set="awake"></button></div>'
+      + '</div>'
+      + '<div class="set-group"><label>背景</label><div class="row-between"><div><b>自定义背景色</b><span>会覆盖纸张主题</span></div><input type="color" id="reader-bg" value="' + (r.bg || '#fbfaf6') + '" style="width:44px;height:32px;border:0;border-radius:8px;background:transparent"></div></div>'
+      + '<div class="set-group"><label>字体</label><div class="row-between"><div><b>自定义字体</b><span>支持 TTF / OTF</span></div><button class="r-mini" data-act="import-font">导入</button><button class="r-mini" data-act="clear-font">默认</button></div>'
+      + '<input id="font-file" type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf" style="display:none">'
+      + '</div>'
+      + '<div class="set-group"><label>手势</label>'
+      + '<div class="gesture-row"><span>点左侧</span><select id="gesture-left" class="r-select">' + [['prev','上一页'],['next','下一页'],['menu','呼出菜单'],['toc','目录'],['settings','设置']].map(x => '<option value="' + x[0] + '"' + ((r.tapLeft || 'prev') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></div>'
+      + '<div class="gesture-row"><span>点中间</span><select id="gesture-center" class="r-select">' + [['menu','呼出菜单'],['prev','上一页'],['next','下一页'],['toc','目录'],['settings','设置']].map(x => '<option value="' + x[0] + '"' + ((r.tapCenter || 'menu') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></div>'
+      + '<div class="gesture-row"><span>点右侧</span><select id="gesture-right" class="r-select">' + [['next','下一页'],['prev','上一页'],['menu','呼出菜单'],['toc','目录'],['settings','设置']].map(x => '<option value="' + x[0] + '"' + ((r.tapRight || 'next') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></div>'
       + '</div>'
       + '<div class="set-group"><label>纸张</label><div class="themes">'
       + themes.map(t => '<button class="theme-btn th-' + t[0] + (r.theme === t[0] ? ' active' : '') + '" data-set="theme" data-value="' + t[0] + '"><i></i>' + t[1] + '</button>').join('')
@@ -706,7 +847,8 @@
       + '<p class="s-sub" style="margin-top:2px">音量键：音量＋上一页，音量－下一页。</p>'
       + '<div class="r-actions"><button data-act="bookmark">' + (isBookmarked() ? '移除书签' : '添加书签') + '</button>'
       + '<button data-act="bookmarks">书签列表</button><button data-act="speak">' + (speaking ? '停止朗读' : '朗读本章') + '</button></div>'
-      + '<div class="r-actions"><button data-act="download-all">' + '下载整本</button><button data-act="share">分享作品</button></div>'
+      + '<div class="r-actions"><button data-act="search-chapter">章节内搜索</button><button data-act="copy-chapter">复制本章</button></div>'
+      + '<div class="r-actions"><button data-act="download-all">下载整本</button><button data-act="share">分享作品</button></div>'
       + '<div class="r-actions" style="margin-top:8px"><button class="primary" data-act="close-sheet">完成</button></div>';
   }
   function openSettings() {
@@ -725,9 +867,22 @@
     document.documentElement.dataset.readerTheme = r.theme;
     document.documentElement.style.setProperty('--r-size', r.fontSize + 'px');
     document.documentElement.style.setProperty('--r-lh', String(r.lineHeight));
-    document.documentElement.style.setProperty('--r-font', r.serif ? 'var(--r-serif)' : '-apple-system, BlinkMacSystemFont, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif');
+    let font = r.serif ? 'var(--r-serif)' : '-apple-system, BlinkMacSystemFont, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif';
+    try {
+      const custom = JSON.parse(localStorage.getItem('nr.font') || 'null');
+      if (custom && custom.data) {
+        let st = document.getElementById('nr-custom-font');
+        if (!st) { st = document.createElement('style'); st.id = 'nr-custom-font'; document.head.appendChild(st); }
+        st.textContent = '@font-face{font-family:NoveliaCustom;src:url(' + custom.data + ');}';
+        font = 'NoveliaCustom, ' + font;
+      }
+    } catch (e) {}
+    document.documentElement.style.setProperty('--r-font', font);
     const metaTheme = document.querySelector('meta[name="theme-color"]');
-    const bg = { paper: '#fbfaf6', sepia: '#f4ead5', green: '#e2ecdb', dark: '#151a16' }[r.theme] || '#fbfaf6';
+    let bg = { paper: '#fbfaf6', sepia: '#f4ead5', green: '#e2ecdb', dark: '#151a16' }[r.theme] || '#fbfaf6';
+    if (r.bg) { bg = r.bg; const lum = (parseInt(bg.slice(1,3),16)*299 + parseInt(bg.slice(3,5),16)*587 + parseInt(bg.slice(5,7),16)*114) / 1000; document.documentElement.style.setProperty('--r-text', lum > 150 ? '#1b211c' : '#edf3ee'); }
+    else document.documentElement.style.removeProperty('--r-text');
+    document.documentElement.style.setProperty('--r-bg', bg);
     if (metaTheme) metaTheme.setAttribute('content', bg);
     if (native && native.setDark) { try { native.setDark(r.theme === 'dark'); } catch (e) {} }
   }
@@ -762,6 +917,16 @@
     else scheduleBarsHide();
   }
 
+  let scrollSyncTimer = null;
+  contentEl.addEventListener('scroll', () => {
+    if (!isScrollLayout()) return;
+    clearTimeout(scrollSyncTimer);
+    scrollSyncTimer = setTimeout(() => {
+      pageStep = Math.max(1, contentEl.clientHeight);
+      page = Math.max(0, Math.min(totalPages - 1, Math.round(contentEl.scrollTop / pageStep)));
+      updateNav(); updateProgressUI(); updateTopProgress();
+    }, 60);
+  }, { passive: true });
   contentEl.addEventListener('click', e => {
     if (e.target.closest('button, a')) return;
     if (Date.now() < suppressClickUntil) return;
@@ -770,14 +935,16 @@
     if (sheetEl.classList.contains('show')) return;
     const x = e.clientX;
     const y = e.clientY;
-    if (x < window.innerWidth * 0.4) prevPage();
-    else if (x > window.innerWidth * 0.6) nextPage();
-    else toggleBars();
+    const r = settings.reader;
+    if (x < window.innerWidth * 0.4) tapAction(r.tapLeft || 'prev');
+    else if (x > window.innerWidth * 0.6) tapAction(r.tapRight || 'next');
+    else tapAction(r.tapCenter || 'menu');
   });
 
   let tx = 0, ty = 0, tt = 0;
   contentEl.addEventListener('touchstart', e => {
     if (e.touches.length !== 1) return;
+    clearAutoTurn();
     tx = e.touches[0].clientX; ty = e.touches[0].clientY; tt = Date.now();
   }, { passive: true });
   contentEl.addEventListener('touchend', e => {
@@ -789,6 +956,7 @@
       suppressClickUntil = Date.now() + 420;
       if (dx < 0) nextPage(); else prevPage();
     }
+    setTimeout(scheduleAutoTurn, 1200);
   }, { passive: true });
 
   /* ---------------- events ---------------- */
@@ -809,6 +977,8 @@
       const val = el.getAttribute('data-value');
       if (keySet === 'mode') {
         settings.reader.mode = val; saveSettings(); engine = pickEngine(chapter || {}); render(); refreshSettingsSheet();
+      } else if (keySet === 'layout') {
+        settings.reader.layout = val; saveSettings(); relayout(); refreshSettingsSheet();
       } else if (keySet === 'theme') {
         settings.reader.theme = val; saveSettings(); applyStyle(); refreshSettingsSheet();
       } else if (keySet === 'serif') {
@@ -845,6 +1015,31 @@
         updateReaderButtons(); showBookmarks(); toast('已删除书签'); break;
       }
       case 'speak': speakChapter(); refreshSettingsSheet(); break;
+      case 'search-chapter': {
+        const q = String(prompt('章节内搜索') || '').trim();
+        if (!q) break;
+        const ok = window.find ? window.find(q, false, false, true) : false;
+        toast(ok ? '已定位到「' + q + '」' : '没有找到「' + q + '」');
+        break;
+      }
+      case 'copy-chapter': {
+        const text = chapterPlainText();
+        if (!text) { toast('本章没有可复制的内容'); break; }
+        try {
+          if (native && native.copyText) native.copyText(text);
+          else if (navigator.clipboard) navigator.clipboard.writeText(text);
+          toast('本章内容已复制');
+        } catch (e) { toast('复制失败'); }
+        break;
+      }
+      case 'import-font': {
+        const f = $('#font-file'); if (f) f.click();
+        break;
+      }
+      case 'clear-font':
+        try { localStorage.removeItem('nr.font'); } catch (e) {}
+        applyStyle(); refreshSettingsSheet(); toast('已恢复默认字体');
+        break;
       case 'share':
         if (native && native.share) {
           const url = isWenku ? ('https://books.fishhawk.top/wenku/' + enc(novel)) : ('https://books.fishhawk.top/novel/' + enc(provider) + '/' + enc(novel));
@@ -876,7 +1071,33 @@
     }
   });
   document.addEventListener('change', e => {
-    if (e.target && e.target.id === 'engine-select') {
+    if (e.target && e.target.id === 'auto-turn') {
+      settings.reader.autoTurn = parseInt(e.target.value, 10) || 0;
+      saveSettings(); scheduleAutoTurn();
+    } else if (e.target && e.target.id === 'reader-bg') {
+      settings.reader.bg = e.target.value || '';
+      saveSettings(); applyStyle();
+    } else if (e.target && e.target.id === 'gesture-left') {
+      settings.reader.tapLeft = e.target.value; saveSettings();
+    } else if (e.target && e.target.id === 'gesture-center') {
+      settings.reader.tapCenter = e.target.value; saveSettings();
+    } else if (e.target && e.target.id === 'gesture-right') {
+      settings.reader.tapRight = e.target.value; saveSettings();
+    } else if (e.target && e.target.id === 'font-file') {
+      const file = e.target.files && e.target.files[0];
+      if (file) {
+        if (file.size > 4 * 1024 * 1024) { toast('字体文件不能超过 4 MB'); e.target.value = ''; return; }
+        const rd = new FileReader();
+        rd.onload = () => {
+          try {
+            localStorage.setItem('nr.font', JSON.stringify({ name: file.name, data: String(rd.result || '') }));
+            applyStyle(); refreshSettingsSheet(); toast('已应用字体：' + file.name);
+          } catch (err) { toast('字体保存失败'); }
+        };
+        rd.readAsDataURL(file);
+      }
+      e.target.value = '';
+    } else if (e.target && e.target.id === 'engine-select') {
       settings.reader.engine = e.target.value;
       saveSettings();
       engine = pickEngine(chapter || {});
@@ -898,6 +1119,7 @@
     hiddenAt = 0;
   });
   window.addEventListener('pagehide', () => {
+    flushStats(true);
     saveProgress();
     stopSpeaking();
     try {
@@ -905,7 +1127,10 @@
       if (native && native.keepScreenOn) native.keepScreenOn(false);
     } catch (e) {}
   });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) saveProgress(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { flushStats(true); saveProgress(); }
+    else { statsStart = Date.now(); }
+  });
   document.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft') prevPage();
     else if (e.key === 'ArrowRight') nextPage();
