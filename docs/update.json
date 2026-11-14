@@ -1,10 +1,10 @@
 {
-  "versionCode": 66,
-  "versionName": "1.7.0",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.0.apk",
-  "notes": "1. 论坛新增注册：用户名、邮箱、密码、验证码\n2. 注册成功自动登录\n3. 修复原生论坛列表请求格式\n4. 反馈只发送到服务器",
-  "size": 152601,
-  "sha256": "0babef85f0294e26db275bd4c733d6a04d785bb2858f4acc57f6e045a3de6f3a",
+  "versionCode": 67,
+  "versionName": "1.7.1",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.1.apk",
+  "notes": "1. 首页改为四个快捷模块\n2. 「我的」按常用/网络/社区/存储/关于切换\n3. 减少重复入口和长列表",
+  "size": 156697,
+  "sha256": "9ac833d8b4882349c75a7b6299a23e175067b73f165911976e8bd1cfec61ac90",
   "minVersionCode": 0,
   "force": false,
   "notice": {

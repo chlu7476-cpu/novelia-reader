@@ -332,6 +332,7 @@
     dlSelected: new Set(),
     subChecking: false,
     statsYear: new Date().getFullYear(),
+    settingsModule: 'general',
     sheet: null,
     confirmEl: null,
     booted: false
@@ -784,10 +785,11 @@
     const searchPill = '<button class="search-pill" data-action="go-search">' + icon('search')
       + '<span>搜索作品、作者或关键词</span><span class="hint">搜索</span></button>';
 
-    const forumEntry = '<button class="forum-entry" data-action="open-forum">'
-      + '<div class="fe-icon">' + icon('forum') + '</div>'
-      + '<div class="fe-copy"><b>小说讨论区</b><span>登录官方论坛，发主题、回复和讨论</span></div>'
-      + '<div class="fe-arrow">' + icon('right') + '</div></button>';
+    const modules = '<div class="home-modules">'
+      + [['#/forum', '论坛', '讨论与回复', 'forum'], ['import-local', '本地导入', 'EPUB / TXT / SRT', 'folder'], ['#/stats', '阅读统计', '看看你的轨迹', 'star'], ['#/downloads', '下载管理', '缓存与导出', 'dlcircle']]
+        .map(m => '<button class="home-module" ' + (m[0].startsWith('#') ? ('data-action="go" data-href="' + m[0] + '"') : ('data-action="' + m[0] + '"')) + '>'
+          + '<div class="hm-icon">' + icon(m[3]) + '</div><div class="hm-copy"><b>' + m[1] + '</b><span>' + m[2] + '</span></div><div class="hm-arrow">' + icon('right') + '</div></button>').join('')
+      + '</div>';
 
     const contHtml = cont ? '<a class="card" style="display:flex;align-items:center;gap:12px;margin-top:12px" href="javascript:void(0)" data-action="continue-reading">'
       + '<div class="si" style="width:38px;height:38px;border-radius:12px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;flex:none">' + icon('play') + '</div>'
@@ -802,10 +804,9 @@
 
     const content = topbar({
       logo: true, brand: true,
-      actions: '<button class="icon-btn" data-action="open-forum" aria-label="论坛">' + icon('forum') + '</button>'
-        + '<button class="icon-btn" data-action="refresh-home" aria-label="刷新">' + icon('refresh') + '</button>'
+      actions: '<button class="icon-btn" data-action="refresh-home" aria-label="刷新">' + icon('refresh') + '</button>'
         + '<button class="icon-btn" data-action="go-search" aria-label="搜索">' + icon('search') + '</button>'
-    }) + hero + searchPill + forumEntry + contHtml
+    }) + hero + searchPill + modules + contHtml
       + '<div class="section-head"><h2>最近更新 <span class="sub">' + PROVIDERS[h.provider].label + (state.r18 ? ' · R18' : '') + '</span></h2>'
       + '<button class="link" data-action="refresh-home">换一批 ' + icon('refresh') + '</button></div>'
       + chips + '<div id="home-list">' + listHtml + '</div>';
@@ -2290,11 +2291,24 @@
     state.autoUpdateChecked = true;
     checkAppUpdate(false);
   }
+  function applySettingsModule() {
+    const map = { '外观': 'general', '阅读': 'general', '社区': 'community', '网页版': 'network', '网络线路': 'network', '代理': 'network', '存储': 'storage', '关于': 'about' };
+    document.querySelectorAll('.setting-group').forEach(g => {
+      const h = g.querySelector('h3');
+      const module = map[(h && h.textContent || '').trim()] || 'general';
+      g.style.display = module === state.settingsModule ? '' : 'none';
+    });
+    document.querySelectorAll('.module-tabs button').forEach(b => b.classList.toggle('active', b.getAttribute('data-module') === state.settingsModule));
+  }
   function settingsView() {
     const p = state.proxy || {};
     const test = state.proxyResult;
     const content = topbar({ logo: true, brand: true })
       + '<div class="section-head"><h2>我的</h2></div>'
+      + '<div class="module-tabs">'
+      + [['general', '常用'], ['network', '网络'], ['community', '社区'], ['storage', '存储'], ['about', '关于']]
+        .map(m => '<button class="' + (state.settingsModule === m[0] ? 'active' : '') + '" data-action="settings-module" data-module="' + m[0] + '">' + m[1] + '</button>').join('')
+      + '</div>'
       + '<div class="setting-group"><h3>外观</h3><div class="setting-card">'
       + '<div class="setting-row"><div class="si">' + icon(settings.theme === 'dark' ? 'moon' : 'sun') + '</div><div class="st"><b>应用主题</b><span>跟随系统，或固定浅色 / 深色</span></div></div>'
       + '<div style="padding:0 15px 14px"><div class="segmented" data-seg="theme">'
@@ -2364,7 +2378,7 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.7.0', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.7.1', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
@@ -2375,7 +2389,7 @@
       + '<div class="si">' + icon('wifi') + '</div><div class="st"><b>在线人数</b><span id="online-count">点击刷新</span></div>'
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
-      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.7.0', '1.5.0')) + '</span></div>'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.7.1', '1.5.0')) + '</span></div>'
       + '<div class="sv">' + icon('right') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="open-feedback">'
       + '<div class="si">' + icon('edit') + '</div><div class="st"><b>问题反馈</b><span>Bug、建议、内容问题，直接发送到服务器</span></div>'
@@ -2388,6 +2402,7 @@
       + '</div></div></div></div>'
       + '<div style="height:10px"></div>';
     setTimeout(loadUsage, 80);
+    setTimeout(applySettingsModule, 0);
     return { html: shell(content, 'settings'), tab: 'settings' };
   }
   async function loadUsage(force) {
@@ -2787,6 +2802,11 @@
         navigate('#/search?p=all&t=' + encodeURIComponent(tag));
         break;
       }
+      case 'settings-module':
+        state.settingsModule = el.getAttribute('data-module') || 'general';
+        applySettingsModule();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        break;
       case 'open-forum':
         openForum();
         break;
