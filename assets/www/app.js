@@ -320,6 +320,7 @@
     dlChoice: 0,
     dlChoiceSet: false,
     usage: { count: null, loading: false, error: '' },
+    online: { count: null, loading: false, error: '' },
     appUpdate: { checking: false },
     pendingUpdate: null,
     shelfFilter: { q: '', status: 'all', cat: 'all', tag: 'all', sort: 'recent' },
@@ -1980,6 +1981,37 @@
       + '<div class="sheet-actions"><button class="btn btn-primary btn-block" data-action="dismiss-notice" data-id="' + esc(notice.id) + '">' + esc(notice.button || '我知道了') + '</button></div>');
     return true;
   }
+  const ONLINE_API = 'https://novelia-api.gainful-mantis.workers.dev';
+  function onlineInstallId() {
+    let id = '';
+    try { id = localStorage.getItem('nr.installId') || ''; } catch (e) {}
+    if (!id) {
+      try { id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : ('n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12)); } catch (e) { id = 'n' + Date.now().toString(36); }
+      try { localStorage.setItem('nr.installId', id); } catch (e) {}
+    }
+    return id;
+  }
+  function sendHeartbeat() {
+    try {
+      fetch(ONLINE_API + '/v1/heartbeat', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: onlineInstallId() }), cache: 'no-store'
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  async function loadOnline() {
+    if (state.online.loading) return;
+    state.online.loading = true;
+    const el = $('#online-count'); if (el) el.textContent = '正在获取…';
+    try {
+      const r = await fetch(ONLINE_API + '/v1/stats?t=' + Date.now(), { cache: 'no-store' });
+      const j = await r.json();
+      state.online.count = Number(j.online) || 0; state.online.error = '';
+    } catch (e) { state.online.error = e.message || '暂时无法获取'; }
+    state.online.loading = false;
+    const el2 = $('#online-count');
+    if (el2) el2.textContent = state.online.error ? '暂时无法获取' : ('最近 5 分钟约 ' + (state.online.count || 0) + ' 人在线');
+  }
   async function checkAppUpdate(manual) {
     if (state.appUpdate.checking) return;
     state.appUpdate.checking = true;
@@ -2084,15 +2116,18 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.6.3', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.6.4', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
       + '<div class="si">' + icon('user') + '</div><div class="st"><b>使用人数</b><span id="usage-count">正在获取…</span></div>'
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<div class="note" style="text-align:left;margin:8px 0 0">按首次安装匿名计数，不收集账号或阅读内容；公开计数器可能被刷，仅作参考。</div>'
+      + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-online">'
+      + '<div class="si">' + icon('wifi') + '</div><div class="st"><b>在线人数</b><span id="online-count">点击刷新</span></div>'
+      + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
-      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.6.3', '1.5.0')) + '</span></div>'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.6.4', '1.5.0')) + '</span></div>'
       + '<div class="sv">' + icon('right') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="open-feedback">'
       + '<div class="si">' + icon('edit') + '</div><div class="st"><b>问题反馈</b><span>Bug、建议、内容问题，提交到 GitHub Issues</span></div>'
@@ -2825,6 +2860,9 @@
         }
         break;
       }
+      case 'refresh-online':
+        loadOnline();
+        break;
       case 'refresh-usage':
         loadUsage(true);
         break;
@@ -2909,6 +2947,8 @@
           state.autoUpdateChecked = false;
           render();
           setTimeout(maybeAutoCheckUpdate, 300);
+    setTimeout(sendHeartbeat, 1200);
+    setInterval(sendHeartbeat, 60000);
     setTimeout(() => {
       if (!settings.autoCheckShelf || state.locked || !shelf.some(x => x.subscribe)) return;
       let last = 0; try { last = Number(localStorage.getItem('nr.subCheckAt') || 0) || 0; } catch (e) {}
@@ -3213,6 +3253,7 @@
   window.addEventListener('hashchange', onRoute);
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) { state.hiddenAt = Date.now(); return; }
+    sendHeartbeat();
     if (state.privacy.hasPin && !state.locked && state.hiddenAt && Date.now() - state.hiddenAt > 60000) {
       state.locked = true;
       render();
@@ -3264,6 +3305,8 @@
     state.route = parseRoute();
     onRoute();
     setTimeout(maybeAutoCheckUpdate, 300);
+    setTimeout(sendHeartbeat, 1200);
+    setInterval(sendHeartbeat, 60000);
     setTimeout(() => {
       if (!settings.autoCheckShelf || state.locked || !shelf.some(x => x.subscribe)) return;
       let last = 0; try { last = Number(localStorage.getItem('nr.subCheckAt') || 0) || 0; } catch (e) {}
