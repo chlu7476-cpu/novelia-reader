@@ -23,6 +23,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
@@ -39,11 +41,15 @@ public class MainActivity extends Activity {
     private Bridge bridge;
     private static final int REQ_EXPORT_BACKUP = 901;
     private static final int REQ_IMPORT_BACKUP = 902;
+    private static final int REQ_EXPORT_BOOK = 903;
     private TextToSpeech tts;
     private boolean ttsReady = false;
     private String pendingExportId;
     private String pendingExportData;
     private String pendingImportId;
+    private String pendingBookId;
+    private File pendingBookFile;
+    private String pendingBookMime;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -293,6 +299,27 @@ public class MainActivity extends Activity {
         }
     }
 
+    void startExportFile(String id, File file, String filename, String mime) {
+        if (file == null || !file.isFile()) {
+            if (bridge != null) bridge.deliver(id, 0, "导出文件不存在");
+            return;
+        }
+        pendingBookId = id;
+        pendingBookFile = file;
+        pendingBookMime = mime == null || mime.isEmpty() ? "application/octet-stream" : mime;
+        try {
+            Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType(pendingBookMime);
+            i.putExtra(Intent.EXTRA_TITLE, filename == null ? file.getName() : filename);
+            startActivityForResult(i, REQ_EXPORT_BOOK);
+        } catch (Exception e) {
+            pendingBookId = null;
+            pendingBookFile = null;
+            if (bridge != null) bridge.deliver(id, 0, "无法打开文件选择器");
+        }
+    }
+
     void startImportBackup(String id) {
         pendingImportId = id;
         try {
@@ -327,6 +354,29 @@ public class MainActivity extends Activity {
                 out.write(json.getBytes(StandardCharsets.UTF_8));
                 out.flush();
                 out.close();
+                bridge.deliver(id, 200, "saved");
+            } catch (Exception e) {
+                bridge.deliver(id, 0, e.getMessage() == null ? "导出失败" : e.getMessage());
+            }
+        } else if (requestCode == REQ_EXPORT_BOOK) {
+            String id = pendingBookId;
+            File file = pendingBookFile;
+            pendingBookId = null;
+            pendingBookFile = null;
+            pendingBookMime = null;
+            if (id == null || bridge == null) return;
+            if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+                bridge.deliver(id, 0, "已取消");
+                return;
+            }
+            try {
+                Uri uri = data.getData();
+                InputStream in = new FileInputStream(file);
+                OutputStream out = getContentResolver().openOutputStream(uri, "wt");
+                if (out == null) throw new Exception("无法写入文件");
+                byte[] buf = new byte[8192]; int n;
+                while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
+                in.close(); out.flush(); out.close();
                 bridge.deliver(id, 200, "saved");
             } catch (Exception e) {
                 bridge.deliver(id, 0, e.getMessage() == null ? "导出失败" : e.getMessage());

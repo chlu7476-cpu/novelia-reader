@@ -1,8 +1,8 @@
 {
-  "versionCode": 49,
-  "versionName": "1.5.2",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.5.2.apk",
-  "notes": "修复：阅读器「下载整本」调用原生下载服务时参数不完整，导致启动失败。",
-  "size": 136217,
-  "sha256": "a56d802422d88a6930537164287b54b03dbdd4b59757684e24bcb5d988282c33"
+  "versionCode": 50,
+  "versionName": "1.5.3",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.5.3.apk",
+  "notes": "新增：阅读设置 → 导出书籍，支持 TXT 和 EPUB（只导出已下载章节）。",
+  "size": 140313,
+  "sha256": "cdb0f5b77c59a614889cdc9b78494438807988076f476fadeed0990e5d5a4fd5"
 }

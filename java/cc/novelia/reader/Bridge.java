@@ -19,6 +19,8 @@ import android.widget.Toast;
 
 import org.json.JSONObject;
 
+import java.io.File;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -153,6 +155,18 @@ final class Bridge {
     @JavascriptInterface
     public void stopSpeak() {
         main.post(() -> activity.stopSpeak());
+    }
+
+    @JavascriptInterface
+    public void exportBook(String id, String provider, String novel, String format) {
+        pool.execute(() -> {
+            try {
+                File f = BookExporter.build(activity, provider, novel, format);
+                activity.startExportFile(id, f, f.getName(), "epub".equalsIgnoreCase(format) ? "application/epub+zip" : "text/plain");
+            } catch (Exception e) {
+                resolve(id, 0, e.getMessage() == null ? "导出失败" : e.getMessage());
+            }
+        });
     }
 
     @JavascriptInterface
@@ -390,7 +404,7 @@ final class Bridge {
 
     @JavascriptInterface
     public String version() {
-        return "1.5.2";
+        return "1.5.3";
     }
 
     @JavascriptInterface

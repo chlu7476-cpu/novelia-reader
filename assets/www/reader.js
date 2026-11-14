@@ -803,6 +803,23 @@
     }
     return arr.map(x => String(x == null ? '' : x).trim()).filter(x => x && !/^!\[[^\]]*\]\(/.test(x)).join('\n');
   }
+  function showExportSheet() {
+    showSheet('<h2>导出书籍</h2><p class="s-sub">只导出已经下载到本机的章节；插图暂不包含在 EPUB 中。</p>'
+      + '<div class="opt-list">'
+      + '<button class="opt" data-act="export-format" data-format="txt"><div class="radio"></div><div><b>TXT 纯文本</b><span>兼容性最好，适合导入其他阅读器</span></div></button>'
+      + '<button class="opt" data-act="export-format" data-format="epub"><div class="radio"></div><div><b>EPUB 电子书</b><span>带目录和章节，适合大多数阅读器</span></div></button>'
+      + '</div><div class="r-actions"><button data-act="close-sheet">取消</button></div>');
+  }
+  async function doExport(format) {
+    closeSheet();
+    toast('正在生成 ' + (format === 'epub' ? 'EPUB' : 'TXT') + '…');
+    try {
+      await invoke('exportBook', provider, novel, format);
+      toast('已导出');
+    } catch (e) {
+      toast(e.message || '导出失败');
+    }
+  }
   function settingsSheetHtml() {
     const r = settings.reader;
     const modes = [['zh', '译文'], ['jp', '原文'], ['both', '双语']];
@@ -1007,6 +1024,13 @@
       case 'retry': init(); break;
       case 'close-sheet': closeSheet(); break;
       case 'toc-more': tocLimit += 500; { const r = $('#toc-rows'); if (r) r.innerHTML = tocRows(); } break;
+      case 'export-book':
+        if (isWenku) { toast('文库缓存暂不支持导出'); break; }
+        showExportSheet();
+        break;
+      case 'export-format':
+        doExport(el.getAttribute('data-format') || 'txt');
+        break;
       case 'download-all':
         if (isWenku) { toast('文库已缓存，无需重复下载'); break; }
         if (native && native.download) {
