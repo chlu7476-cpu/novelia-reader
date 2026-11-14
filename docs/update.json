@@ -1,10 +1,10 @@
 {
-  "versionCode": 68,
-  "versionName": "1.7.2",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.2.apk",
-  "notes": "1. 原站账号登录页新增注册入口\n2. 用户名、邮箱、密码、验证码\n3. 注册成功后自动登录\n4. 公共账号不再跳网页版",
+  "versionCode": 69,
+  "versionName": "1.7.3",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.3.apk",
+  "notes": "1. 修复首页模块卡片溢出屏幕\n2. 窄屏自动单列\n3. 模块标题和说明自动截断",
   "size": 156697,
-  "sha256": "db2f963718d656b2d7d4651d88f6b9fb6dd6a3de530eb71671ec908fb0adedfb",
+  "sha256": "76c3ea46a85023718067da3cbf318bc95b4e64fda1010eab42a579266db3981d",
   "minVersionCode": 0,
   "force": false,
   "notice": {

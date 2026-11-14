@@ -884,15 +884,19 @@ body.simple-mode .tab.active { background: transparent; }
 .forum-login-note { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding: 12px 13px; border: 1px solid var(--line); border-radius: 14px; color: var(--muted); font-size: 11px; }
 
 /* ---------- modular home / settings ---------- */
-.home-modules { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; margin-top: 12px; }
-.home-module { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); text-align: left; }
+.home-modules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 12px; width: 100%; }
+.home-module { display: flex; align-items: center; gap: 8px; padding: 11px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); text-align: left; min-width: 0; max-width: 100%; overflow: hidden; }
 .home-module .hm-icon { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--primary); }
 .home-module .hm-icon svg { width: 17px; height: 17px; }
 .home-module .hm-copy { flex: 1; min-width: 0; }
-.home-module .hm-copy b { display: block; font-size: 12.5px; }
-.home-module .hm-copy span { display: block; color: var(--faint); font-size: 9.5px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-module .hm-copy b { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-module .hm-copy span { display: block; color: var(--faint); font-size: 9px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .home-module .hm-arrow { color: var(--faint); }
 .home-module .hm-arrow svg { width: 14px; height: 14px; }
 .module-tabs { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); margin: 0 0 12px; overflow-x: auto; }
 .module-tabs button { flex: 1; min-width: 54px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: inherit; font-size: 11px; font-weight: 700; padding: 8px 4px; }
 .module-tabs button.active { background: var(--primary); color: #fff; }
+
+@media (max-width: 370px) {
+  .home-modules { grid-template-columns: 1fr; }
+}
