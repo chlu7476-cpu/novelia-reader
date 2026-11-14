@@ -163,6 +163,29 @@ final class Bridge {
     }
 
     @JavascriptInterface
+    public void forumRequest(String id, String method, String path, String body, String token) {
+        new Thread(() -> {
+            try {
+                String raw = ForumClient.request(activity, method, path, body, token);
+                deliver(id, 200, raw);
+            } catch (Exception e) {
+                deliver(id, 0, e.getMessage() == null ? "论坛请求失败" : e.getMessage());
+            }
+        }).start();
+    }
+
+    @JavascriptInterface
+    public void forumLogin(String id, String username, String password) {
+        new Thread(() -> {
+            try {
+                deliver(id, 200, ForumClient.login(activity, username, password));
+            } catch (Exception e) {
+                deliver(id, 0, e.getMessage() == null ? "论坛登录失败" : e.getMessage());
+            }
+        }).start();
+    }
+
+    @JavascriptInterface
     public void importLocalBook(String id) {
         activity.startImportLocalBook(id);
     }
@@ -435,7 +458,7 @@ final class Bridge {
 
     @JavascriptInterface
     public String version() {
-        return "1.6.6";
+        return "1.6.7";
     }
 
     @JavascriptInterface

@@ -322,6 +322,7 @@
     dlChoiceSet: false,
     usage: { count: null, loading: false, error: '' },
     online: { count: null, loading: false, error: '' },
+    forum: { started: false, loading: false, items: [], total: 0, page: 0, sort: 'active', q: '', error: '', post: null, comments: [], postLoading: false, busy: false },
     appUpdate: { checking: false },
     pendingUpdate: null,
     shelfFilter: { q: '', status: 'all', cat: 'all', tag: 'all', sort: 'recent' },
@@ -387,6 +388,9 @@
     } else if (r.name === 'wenku') {
       if (r.seg[1]) loadWenkuBook(r.seg[1]);
       else if (!state.wenku.started) loadWenku(0);
+    } else if (r.name === 'forum') {
+      if (r.seg[1]) loadForumPost(r.seg[1]);
+      else loadForum(0);
     }
     render();
     if (!state.booted) {
@@ -414,6 +418,7 @@
     else if (r.name === 'settings') view = settingsView();
     else if (r.name === 'stats') view = statsView();
     else if (r.name === 'wenku') view = r.seg[1] ? wenkuBookView() : wenkuView();
+    else if (r.name === 'forum') view = r.seg[1] ? forumPostView() : forumView();
     else view = homeView();
     const renderKey = r.name + '|' + JSON.stringify(r.seg || []);
     if (state.lastRenderKey !== renderKey) {
@@ -524,6 +529,192 @@
       + '<button data-action="' + kind + '-page" data-page="' + (page + 1) + '" ' + (page >= pageCount - 1 ? 'disabled' : '') + '>下一页</button>'
       + '<input id="' + kind + '-page-input" inputmode="numeric" placeholder="页码">'
       + '<button data-action="' + kind + '-go">跳转</button></div>';
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  Native forum
+   * ------------------------------------------------------------------ */
+  const FORUM_CATEGORY = 'novel';
+  function forumToken() { try { return localStorage.getItem('nr.forumToken') || ''; } catch (e) { return ''; } }
+  function forumName() {
+    const t = forumToken();
+    if (!t) return '';
+    try {
+      const part = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const data = JSON.parse(decodeURIComponent(escape(atob(part))));
+      return data.username || data.name || data.sub || '';
+    } catch (e) { return ''; }
+  }
+  function forumLoggedIn() { return !!forumToken(); }
+  function forumSetToken(t) { try { t ? localStorage.setItem('nr.forumToken', t) : localStorage.removeItem('nr.forumToken'); } catch (e) {} }
+  async function forumApi(method, path, body) {
+    const raw = await invokeLong('forumRequest', method, path, body || '', forumToken());
+    try { return JSON.parse(raw || '{}'); } catch (e) { throw new Error('论坛返回格式异常'); }
+  }
+  function forumTime(value) {
+    if (!value) return '';
+    const d = new Date(value); if (isNaN(d)) return '';
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60) return '刚刚';
+    if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前';
+    if (diff < 86400) return Math.floor(diff / 3600) + ' 小时前';
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  }
+  async function loadForum(page) {
+    const f = state.forum;
+    if (f.loading) return;
+    if (page === 0) { f.items = []; f.total = 0; f.page = 0; }
+    f.loading = true; f.error = '';
+    if (state.route.name === 'forum' && !state.route.seg[1]) render();
+    try {
+      const path = 'post/?page=' + ((page || 0) + 1) + '&page_size=20&category=' + FORUM_CATEGORY
+        + '&q=' + encodeURIComponent(f.q || '') + '&sort=' + encodeURIComponent(f.sort || 'active');
+      const data = await forumApi('GET', path, '');
+      f.items = (page === 0 ? [] : f.items).concat(Array.isArray(data.items) ? data.items : []);
+      f.total = Number(data.total) || f.items.length;
+      f.page = page || 0;
+      f.started = true;
+    } catch (e) { f.error = e.message || '论坛加载失败'; }
+    f.loading = false;
+    if (state.route.name === 'forum' && !state.route.seg[1]) render();
+  }
+  function forumView() {
+    const f = state.forum;
+    const logged = forumLoggedIn();
+    const who = forumName() || '论坛账号';
+    let list = '';
+    if (f.loading && !f.items.length) list = skeletonRows(6);
+    else if (f.error && !f.items.length) list = errorCard(f.error, 'forum-retry');
+    else if (!f.items.length) list = emptyState('forum', '还没有帖子', '来发第一个主题，或稍后刷新。', '刷新', 'forum-retry');
+    else {
+      list = '<div class="forum-list">' + f.items.map(p => {
+        const tags = (p.tags || []).slice(0, 2).map(t => '<span class="forum-tag">' + esc(t.name) + '</span>').join('');
+        return '<button class="forum-item" data-action="open-forum-post" data-id="' + p.id + '">'
+          + '<div class="fi-head"><b>' + esc(p.title || '无标题') + '</b>' + (p.pinOrder != null ? '<span class="forum-tag pin">置顶</span>' : '') + '</div>'
+          + '<div class="fi-meta"><span>' + esc(p.authorUsername || '匿名') + '</span><span>' + forumTime(p.activeAt || p.createdAt) + '</span>'
+          + '<span>' + (p.commentsCount || 0) + ' 评论</span><span>' + (p.viewsCount || 0) + ' 浏览</span>' + tags + '</div>'
+          + (p.content ? '<div class="fi-excerpt">' + esc(String(p.content).replace(/[#>*`!\[\]]/g, '').slice(0, 110)) + '</div>' : '')
+          + '</button>';
+      }).join('') + '</div>';
+      if (f.loading) list += '<div class="load-more"><span class="btn btn-sm btn-ghost"><span class="spin"></span> 加载中</span></div>';
+      else if (f.items.length < f.total) list += '<div class="load-more"><button class="btn btn-sm btn-ghost" data-action="forum-more">加载更多</button></div>';
+    }
+    const content = topbar({ back: true, title: '小说讨论', sub: 'NOVELIA FORUM', actions:
+      '<button class="icon-btn" data-action="forum-new-post" aria-label="发帖">' + icon('edit') + '</button>'
+      + '<button class="icon-btn" data-action="forum-retry" aria-label="刷新">' + icon('refresh') + '</button>' })
+      + '<div class="forum-hero"><div><div class="kicker">OFFICIAL COMMUNITY</div><h1>小说讨论区</h1><p>聊作品、聊翻译、聊剧情。登录论坛账号后可以直接发主题和回复。</p></div>'
+      + '<div class="forum-self">' + (logged ? '<b>' + esc(who) + '</b><button class="link" data-action="forum-logout">退出</button>' : '<button class="btn btn-primary btn-sm" data-action="forum-login">登录论坛</button>') + '</div></div>'
+      + '<div class="forum-tools"><input id="forum-q" placeholder="搜索帖子" value="' + esc(f.q || '') + '" maxlength="60">'
+      + '<button class="btn btn-sm btn-ghost" data-action="forum-search">搜索</button></div>'
+      + '<div class="chips forum-sorts">'
+      + [['active', '最近活跃'], ['newest', '最新发布'], ['comments', '评论最多']].map(x => '<button class="chip ' + (f.sort === x[0] ? 'active' : '') + '" data-action="forum-sort" data-sort="' + x[0] + '">' + x[1] + '</button>').join('')
+      + '</div>' + list;
+    return { html: shell(content, null), tab: null };
+  }
+  function forumCommentHtml(c) {
+    return '<div class="forum-comment"><div class="fc-head"><b>' + esc(c.authorUsername || '匿名') + '</b><span>' + forumTime(c.createdAt) + '</span></div>'
+      + '<div class="fc-body">' + esc(c.content || '') + '</div>'
+      + (c.replyCount ? '<div class="fc-replies">' + c.replyCount + ' 条回复</div>' : '') + '</div>';
+  }
+  function forumPostView() {
+    const f = state.forum;
+    if (f.postLoading && !f.post) return { html: shell(topbar({ back: true, title: '帖子', sub: 'NOVELIA FORUM' }) + skeletonRows(5), null), tab: null };
+    if (!f.post) return { html: shell(topbar({ back: true, title: '帖子', sub: 'NOVELIA FORUM' }) + errorCard(f.error || '帖子不存在', 'forum-back'), null), tab: null };
+    const p = f.post;
+    const logged = forumLoggedIn();
+    const content = topbar({ back: true, title: '帖子', sub: p.authorUsername || 'NOVELIA FORUM', actions:
+      '<button class="icon-btn" data-action="forum-reload-post" aria-label="刷新">' + icon('refresh') + '</button>' })
+      + '<article class="forum-post"><h1>' + esc(p.title || '') + '</h1>'
+      + '<div class="forum-post-meta"><span>' + esc(p.authorUsername || '匿名') + '</span><span>' + forumTime(p.createdAt) + '</span><span>' + (p.viewsCount || 0) + ' 浏览</span></div>'
+      + '<div class="forum-body">' + esc(p.content || '') + '</div></article>'
+      + '<div class="section-head"><h2>评论 <span class="sub">' + (p.commentsCount || f.comments.length || 0) + '</span></h2></div>'
+      + '<div class="forum-comments">' + (f.comments.length ? f.comments.map(forumCommentHtml).join('') : '<div class="note" style="padding:14px">还没有评论，来讨论吧。</div>') + '</div>'
+      + (logged ? '<div class="forum-reply"><textarea id="forum-reply-text" maxlength="2000" placeholder="写下你的评论…"></textarea><button class="btn btn-primary btn-sm" data-action="forum-reply">发送评论</button></div>'
+        : '<div class="forum-login-note"><span>登录论坛账号后可以评论</span><button class="btn btn-primary btn-sm" data-action="forum-login">登录</button></div>');
+    return { html: shell(content, null), tab: null };
+  }
+  async function loadForumPost(id) {
+    const f = state.forum;
+    if (!id) return;
+    f.postLoading = true; f.post = null; f.comments = []; f.error = '';
+    if (state.route.name === 'forum' && state.route.seg[1]) render();
+    try {
+      const post = await forumApi('GET', 'post/' + encodeURIComponent(id) + '/', '');
+      f.post = post;
+      try {
+        const c = await forumApi('GET', 'post/' + encodeURIComponent(id) + '/comment?page=1&page_size=30', '');
+        f.comments = Array.isArray(c.items) ? c.items : [];
+      } catch (e) { f.comments = []; }
+    } catch (e) { f.error = e.message || '帖子加载失败'; }
+    f.postLoading = false;
+    if (state.route.name === 'forum' && state.route.seg[1]) render();
+  }
+  function forumLoginSheet(message) {
+    showSheet('<h2>登录论坛</h2><p class="sheet-sub">' + esc(message || '使用你的 Novelia 论坛账号登录；密码不会保存在 App 里。') + '</p>'
+      + '<div class="feedback-form"><label>用户名 / 邮箱<input id="forum-user" autocomplete="username" maxlength="120"></label>'
+      + '<label>密码<input id="forum-pass" type="password" autocomplete="current-password" maxlength="200"></label></div>'
+      + '<div class="sheet-actions"><button class="btn btn-primary btn-block" data-action="forum-do-login">登录</button>'
+      + '<button class="btn btn-ghost btn-block" data-action="close-sheet">取消</button></div>');
+  }
+  async function forumDoLogin() {
+    const uEl = $('#forum-user'), pEl = $('#forum-pass');
+    const u = uEl ? uEl.value.trim() : '', p = pEl ? pEl.value : '';
+    if (!u || !p) { toast('请填写账号和密码'); return; }
+    state.forum.busy = true;
+    try {
+      let raw = (await invokeLong('forumLogin', u, p)).trim();
+      let token = raw;
+      try { const j = JSON.parse(raw); token = j.token || j.accessToken || (j.data && j.data.token) || raw; } catch (e) {}
+      if (!token || token.length < 20) throw new Error('登录服务没有返回有效令牌');
+      forumSetToken(token);
+      closeSheet();
+      toast('已登录论坛');
+      if (state.route.name === 'forum') {
+        if (state.route.seg[1]) loadForumPost(state.route.seg[1]); else render();
+      }
+    } catch (e) { toast(e.message || '登录失败'); }
+    state.forum.busy = false;
+  }
+  function forumLogout() {
+    forumSetToken('');
+    toast('已退出论坛');
+    if (state.route.name === 'forum') render();
+  }
+  function forumNewPostSheet() {
+    if (!forumLoggedIn()) { forumLoginSheet('登录后才能发帖。'); return; }
+    showSheet('<h2>发布主题</h2><p class="sheet-sub">发布到「小说讨论」分类。</p>'
+      + '<div class="feedback-form"><label>标题<input id="forum-new-title" maxlength="120" placeholder="标题"></label>'
+      + '<label>正文<textarea id="forum-new-content" maxlength="4000" rows="7" placeholder="想聊什么？"></textarea></label></div>'
+      + '<div class="sheet-actions"><button class="btn btn-primary btn-block" data-action="forum-create-post">发布</button>'
+      + '<button class="btn btn-ghost btn-block" data-action="close-sheet">取消</button></div>');
+  }
+  async function forumCreatePost() {
+    const tEl = $('#forum-new-title'), cEl = $('#forum-new-content');
+    const title = tEl ? tEl.value.trim() : '', content = cEl ? cEl.value.trim() : '';
+    if (title.length < 2) { toast('标题至少 2 个字'); return; }
+    if (content.length < 2) { toast('正文至少 2 个字'); return; }
+    try {
+      const p = await forumApi('POST', 'post/', JSON.stringify({ categoryId: 100, title, content, tagIds: [] }));
+      closeSheet(); toast('已发布');
+      state.forum.started = false;
+      navigate('#/forum/' + p.id);
+    } catch (e) { toast(e.message || '发布失败'); }
+  }
+  async function forumReply() {
+    const el = $('#forum-reply-text');
+    const text = el ? el.value.trim() : '';
+    if (text.length < 2) { toast('评论至少 2 个字'); return; }
+    if (!state.forum.post) return;
+    try {
+      await forumApi('POST', 'post/' + state.forum.post.id + '/comment', JSON.stringify({ content: text }));
+      toast('评论已发送');
+      loadForumPost(state.forum.post.id);
+    } catch (e) { toast(e.message || '评论失败'); }
+  }
+  function forumSearch() {
+    const el = $('#forum-q');
+    state.forum.q = el ? el.value.trim() : '';
+    loadForum(0);
   }
   function homeView() {
     const h = state.home;
@@ -1957,14 +2148,7 @@
     const title = '[反馈] ' + (labels[type] || '其他') + (summary ? '：' + summary : '');
     return { title: title, body: body, text: title + '\n\n' + body };
   }
-  function openForum() {
-    const url = 'https://forum.novelia.cc/c/novel';
-    try {
-      if (native && native.openWeb) native.openWeb(url);
-      else if (native && native.openExternal) native.openExternal(url);
-      else window.open(url, '_blank');
-    } catch (e) { toast('无法打开论坛'); }
-  }
+  function openForum() { navigate('#/forum'); }
   function openFeedback() { showSheet(feedbackFormHtml()); }
   function submitFeedback() {
     const p = feedbackPayload();
@@ -2150,7 +2334,7 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.6.6', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.6.7', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
@@ -2161,7 +2345,7 @@
       + '<div class="si">' + icon('wifi') + '</div><div class="st"><b>在线人数</b><span id="online-count">点击刷新</span></div>'
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
-      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.6.6', '1.5.0')) + '</span></div>'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.6.7', '1.5.0')) + '</span></div>'
       + '<div class="sv">' + icon('right') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="open-feedback">'
       + '<div class="si">' + icon('edit') + '</div><div class="st"><b>问题反馈</b><span>Bug、建议、内容问题，提交到 GitHub Issues</span></div>'
@@ -2575,6 +2759,46 @@
       }
       case 'open-forum':
         openForum();
+        break;
+      case 'forum-retry':
+        loadForum(0);
+        break;
+      case 'forum-more':
+        loadForum((state.forum.page || 0) + 1);
+        break;
+      case 'forum-sort':
+        state.forum.sort = el.getAttribute('data-sort') || 'active';
+        loadForum(0);
+        break;
+      case 'forum-search':
+        forumSearch();
+        break;
+      case 'forum-login':
+        forumLoginSheet();
+        break;
+      case 'forum-do-login':
+        forumDoLogin();
+        break;
+      case 'forum-logout':
+        forumLogout();
+        break;
+      case 'forum-new-post':
+        forumNewPostSheet();
+        break;
+      case 'forum-create-post':
+        forumCreatePost();
+        break;
+      case 'forum-reply':
+        forumReply();
+        break;
+      case 'forum-reload-post':
+        if (state.forum.post) loadForumPost(state.forum.post.id);
+        break;
+      case 'forum-back':
+        navigate('#/forum');
+        break;
+      case 'open-forum-post':
+        navigate('#/forum/' + el.getAttribute('data-id'));
         break;
       case 'open-web-gate':
         showAgeGate('https://books.fishhawk.top/');
