@@ -2447,7 +2447,7 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.7.5', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.7.6', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
@@ -2458,7 +2458,7 @@
       + '<div class="si">' + icon('wifi') + '</div><div class="st"><b>在线人数</b><span id="online-count">点击刷新</span></div>'
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
-      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.7.5', '1.5.0')) + '</span></div>'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.7.6', '1.5.0')) + '</span></div>'
       + '<div class="sv">' + icon('right') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="open-feedback">'
       + '<div class="si">' + icon('edit') + '</div><div class="st"><b>问题反馈</b><span>Bug、建议、内容问题，直接发送到服务器</span></div>'
@@ -3571,7 +3571,7 @@
         if (native && native.openExternal) { try { native.openExternal('https://books.fishhawk.top/'); } catch (e) {} }
         break;
       case 'share-app':
-        if (native && native.share) { try { native.share('Novelia 阅读 · 轻小说机翻阅读器\nhttps://books.fishhawk.top/'); } catch (e) {} }
+        if (native && native.share) { try { native.share('Novelia 阅读 1.7.6 · 轻小说机翻阅读器\n多书源 / 文库 EPUB / 插图阅读 / 离线缓存 / 原生论坛 / 本地导入\nAndroid 下载：https://chlu7476-cpu.github.io/novelia-reader/\n需要自备可用的网络工具/VPN；非官方客户端，内容版权归原作者与站点。'); } catch (e) {} }
         break;
       case 'exit-app':
         if (native && native.exit) { try { native.exit(); } catch (e) {} }
