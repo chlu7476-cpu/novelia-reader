@@ -1565,6 +1565,70 @@
       state.relay = sync(() => native.relayGet(), 'auto') || 'auto';
     }
   }
+  function feedbackFormHtml() {
+    return '<h2>问题反馈</h2>'
+      + '<p class="sheet-sub">反馈会提交到 GitHub Issues；不会自动上传书架或阅读内容。</p>'
+      + '<div class="feedback-form">'
+      + '<label>类型<select id="feedback-type">'
+      + '<option value="bug">Bug / 闪退</option>'
+      + '<option value="feature">功能建议</option>'
+      + '<option value="content">内容 / 章节问题</option>'
+      + '<option value="other">其他</option>'
+      + '</select></label>'
+      + '<label>描述<textarea id="feedback-text" rows="5" maxlength="4000" placeholder="发生了什么？怎么复现？期望是什么？"></textarea></label>'
+      + '<label>联系方式（可选）<input id="feedback-contact" placeholder="邮箱 / QQ / GitHub 用户名" maxlength="120"></label>'
+      + '<label class="feedback-check"><input id="feedback-diagnostics" type="checkbox" checked> 附带版本、页面和 Android/WebView 信息</label>'
+      + '</div>'
+      + '<div class="sheet-actions">'
+      + '<button class="btn btn-primary btn-block" data-action="submit-feedback">打开 GitHub 提交</button>'
+      + '<button class="btn btn-ghost btn-block" data-action="copy-feedback">复制反馈内容</button>'
+      + '<button class="btn btn-ghost btn-block" data-action="close-sheet">取消</button>'
+      + '</div>';
+  }
+  function feedbackPayload() {
+    const typeEl = $('#feedback-type');
+    const textEl = $('#feedback-text');
+    const contactEl = $('#feedback-contact');
+    const diagEl = $('#feedback-diagnostics');
+    const type = typeEl ? typeEl.value : 'other';
+    const desc = textEl ? String(textEl.value || '').trim() : '';
+    const contact = contactEl ? String(contactEl.value || '').trim() : '';
+    const labels = { bug: 'Bug / 闪退', feature: '功能建议', content: '内容 / 章节问题', other: '其他' };
+    if (desc.length < 5) return { error: '请至少写 5 个字描述问题' };
+    let body = '## 类型\n' + (labels[type] || '其他') + '\n\n## 描述\n' + desc + '\n';
+    if (contact) body += '\n## 联系方式\n' + contact + '\n';
+    if (!diagEl || diagEl.checked) {
+      const version = sync(() => native && native.version ? native.version() : '', '未知');
+      const route = state.route ? state.route.name : '未知';
+      const ua = navigator.userAgent || '';
+      body += '\n## 环境\n- App: ' + version + '\n- 页面: ' + route + '\n- Android/WebView: ' + ua + '\n';
+    }
+    body += '\n---\n由 Novelia 内反馈模块生成';
+    const summary = desc.split('\n')[0].slice(0, 48);
+    const title = '[反馈] ' + (labels[type] || '其他') + (summary ? '：' + summary : '');
+    return { title: title, body: body, text: title + '\n\n' + body };
+  }
+  function openFeedback() { showSheet(feedbackFormHtml()); }
+  function submitFeedback() {
+    const p = feedbackPayload();
+    if (p.error) { toast(p.error); return; }
+    const url = 'https://github.com/chlu7476-cpu/novelia-reader/issues/new?title=' + encodeURIComponent(p.title) + '&body=' + encodeURIComponent(p.body);
+    try {
+      if (native && native.openExternal) native.openExternal(url);
+      else window.open(url, '_blank');
+      closeSheet();
+      toast('已打开 GitHub，登录后点 Submit 提交');
+    } catch (e) { toast('无法打开浏览器'); }
+  }
+  function copyFeedback() {
+    const p = feedbackPayload();
+    if (p.error) { toast(p.error); return; }
+    try {
+      if (native && native.copyText) native.copyText(p.text);
+      else if (navigator.clipboard) navigator.clipboard.writeText(p.text);
+      toast('反馈内容已复制');
+    } catch (e) { toast('复制失败'); }
+  }
   async function checkAppUpdate(manual) {
     if (state.appUpdate.checking) return;
     state.appUpdate.checking = true;
@@ -1663,7 +1727,7 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.4.28', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.4.29', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
@@ -1671,7 +1735,10 @@
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<div class="note" style="text-align:left;margin:8px 0 0">按首次安装匿名计数，不收集账号或阅读内容；公开计数器可能被刷，仅作参考。</div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
-      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.4.28', '1.4.28')) + '</span></div>'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.4.29', '1.4.28')) + '</span></div>'
+      + '<div class="sv">' + icon('right') + '</div></button>'
+      + '<button class="setting-row" style="width:100%;text-align:left" data-action="open-feedback">'
+      + '<div class="si">' + icon('edit') + '</div><div class="st"><b>问题反馈</b><span>Bug、建议、内容问题，提交到 GitHub Issues</span></div>'
       + '<div class="sv">' + icon('right') + '</div></button>'
       + '<div class="divider"></div>'
       + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
@@ -2432,6 +2499,15 @@
         break;
       case 'check-app-update':
         checkAppUpdate(true);
+        break;
+      case 'open-feedback':
+        openFeedback();
+        break;
+      case 'submit-feedback':
+        submitFeedback();
+        break;
+      case 'copy-feedback':
+        copyFeedback();
         break;
       case 'do-app-update': {
         const info = state.pendingUpdate;

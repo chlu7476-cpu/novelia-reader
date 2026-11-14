@@ -1,8 +1,8 @@
 {
-  "versionCode": 43,
-  "versionName": "1.4.28",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.4.28.apk",
-  "notes": "1. 评论支持页码翻页、上一页/下一页和输入页码跳转\n2. 新增应用内检查更新，下载后直接调起系统安装器\n3. 优化阅读与下载稳定性",
-  "size": 119833,
-  "sha256": "50c989bb6f79aad83c6e51ac08166d350fadc7ed32c39a5870fbae64c11c2a94"
+  "versionCode": 44,
+  "versionName": "1.4.29",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.4.29.apk",
+  "notes": "1. 新增问题反馈模块，可直接提交到 GitHub Issues\n2. 反馈可附带版本、页面与设备信息，也可复制内容\n3. 评论页码翻页与检查更新功能保留",
+  "size": 123929,
+  "sha256": "92cf209c5c5005c993f9fb4fa12600a4a10e566aa334388cbe2aa0e1fea18ef0"
 }

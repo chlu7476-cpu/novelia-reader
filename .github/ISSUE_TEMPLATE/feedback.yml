@@ -1,0 +1,42 @@
+name: 问题反馈
+description: 报告 Bug、功能建议或内容问题
+title: "[反馈] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请勿粘贴账号密码、令牌或未公开的个人信息。
+  - type: dropdown
+    id: type
+    attributes:
+      label: 类型
+      options:
+        - Bug / 闪退
+        - 功能建议
+        - 内容 / 章节问题
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 描述
+      description: 发生了什么？怎么复现？期望是什么？
+      placeholder: 请尽量写清楚步骤和现象。
+    validations:
+      required: true
+  - type: input
+    id: contact
+    attributes:
+      label: 联系方式（可选）
+      placeholder: 邮箱 / QQ / GitHub 用户名
+  - type: input
+    id: version
+    attributes:
+      label: App 版本
+      placeholder: 例如 1.4.29
+  - type: input
+    id: android
+    attributes:
+      label: Android / 设备
+      placeholder: 例如 Android 14 / vivo

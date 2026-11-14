@@ -1,7 +1,9 @@
 package cc.novelia.reader;
 
 import android.app.Activity;
+import android.content.ClipData;
 import android.content.Context;
+import android.content.ClipboardManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
@@ -341,6 +343,16 @@ final class Bridge {
     }
 
     @JavascriptInterface
+    public void copyText(String text) {
+        main.post(() -> {
+            try {
+                ClipboardManager cm = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
+                cm.setPrimaryClip(ClipData.newPlainText("feedback", text == null ? "" : text));
+            } catch (Exception ignored) {}
+        });
+    }
+
+    @JavascriptInterface
     public void updateInfo(String id) {
         pool.execute(() -> {
             try {
@@ -378,7 +390,7 @@ final class Bridge {
 
     @JavascriptInterface
     public String version() {
-        return "1.4.28";
+        return "1.4.29";
     }
 
     @JavascriptInterface
