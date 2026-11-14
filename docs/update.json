@@ -1,10 +1,12 @@
 {
-  "versionCode": 60,
-  "versionName": "1.6.4",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.6.4.apk",
-  "notes": "1. 新增匿名在线心跳\n2. 我的 → 关于 → 在线人数，可看最近 5 分钟在线设备\n3. 公告/更新继续走动态服务器",
+  "versionCode": 61,
+  "versionName": "1.6.5",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.6.5.apk",
+  "notes": "1. 后台可上传 APK 并自动校验\n2. 在线趋势、版本分布\n3. 公告历史/定时/回滚、强制更新、反馈收件箱",
   "size": 144409,
-  "sha256": "c1525581abb8e92a5b48f5f4e897bbf11e760da157861295cb3c506b25afc5c4",
+  "sha256": "a97b612ebcd165cc59efab87572a5c370eecd9bfc4098ecbcc7f0159d59bc745",
+  "minVersionCode": 0,
+  "force": false,
   "notice": {
     "id": "vpn-required-2026-11-14",
     "active": true,

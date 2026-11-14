@@ -53,6 +53,8 @@ final class UpdateManager {
         out.put("notes", notes);
         out.put("sha256", sha);
         out.put("size", size);
+        out.put("minVersionCode", remote.optLong("minVersionCode", 0));
+        out.put("force", remote.optBoolean("force", false));
         org.json.JSONObject notice = remote.optJSONObject("notice");
         if (notice != null) out.put("notice", notice);
         return out;
@@ -67,7 +69,8 @@ final class UpdateManager {
         File dst = apkFile(ctx);
         try {
             URL u = new URL(url);
-            if (!"https".equalsIgnoreCase(u.getProtocol()) || !APK_HOST.equalsIgnoreCase(u.getHost())) {
+            String host = u.getHost() == null ? "" : u.getHost().toLowerCase(Locale.US);
+            if (!"https".equalsIgnoreCase(u.getProtocol()) || (!APK_HOST.equalsIgnoreCase(host) && !"novelia-api.gainful-mantis.workers.dev".equalsIgnoreCase(host))) {
                 throw new Exception("更新地址不合法");
             }
             if (tmp.exists()) tmp.delete();

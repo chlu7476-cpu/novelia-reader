@@ -435,7 +435,15 @@ final class Bridge {
 
     @JavascriptInterface
     public String version() {
-        return "1.6.4";
+        return "1.6.5";
+    }
+
+    @JavascriptInterface
+    public int versionCode() {
+        try {
+            android.content.pm.PackageInfo pi = activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0);
+            return android.os.Build.VERSION.SDK_INT >= 28 ? (int) pi.getLongVersionCode() : pi.versionCode;
+        } catch (Exception e) { return 0; }
     }
 
     @JavascriptInterface

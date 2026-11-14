@@ -1962,6 +1962,19 @@
       toast('已打开 GitHub，登录后点 Submit 提交');
     } catch (e) { toast('无法打开浏览器'); }
   }
+  async function sendFeedbackServer() {
+    const p = feedbackPayload();
+    if (p.error) { toast(p.error); return; }
+    const typeEl = $('#feedback-type'); const contactEl = $('#feedback-contact');
+    try {
+      const r = await fetch(ONLINE_API + '/v1/feedback', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ type: typeEl ? typeEl.value : 'other', text: p.body, contact: contactEl ? contactEl.value : '', version: sync(() => native && native.version ? native.version() : '', ''), page: state.route ? state.route.name : '' })
+      });
+      if (!r.ok) throw new Error('服务器返回 ' + r.status);
+      closeSheet(); toast('反馈已发送，谢谢');
+    } catch (e) { toast(e.message || '发送失败，可改用 GitHub'); }
+  }
   function copyFeedback() {
     const p = feedbackPayload();
     if (p.error) { toast(p.error); return; }
@@ -1995,7 +2008,7 @@
     try {
       fetch(ONLINE_API + '/v1/heartbeat', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ id: onlineInstallId() }), cache: 'no-store'
+        body: JSON.stringify({ id: onlineInstallId(), v: sync(() => native && native.version ? native.version() : '', ''), p: 'android' }), cache: 'no-store'
       }).catch(function () {});
     } catch (e) {}
   }
@@ -2035,11 +2048,13 @@
   function appUpdateSheet(info) {
     const notes = esc(info.notes || '修复问题并改进体验。').replace(/\n/g, '<br>');
     const size = info.size ? fmtBytes(info.size) : '约 117 KB';
-    return '<h2>发现新版本 ' + esc(info.versionName || '') + '</h2>'
+    const forced = !!info.force || (!!info.minVersionCode && Number(info.currentCode || 0) < Number(info.minVersionCode));
+    return '<h2>' + (forced ? '必须更新' : '发现新版本 ') + esc(info.versionName || '') + '</h2>'
       + '<p class="sheet-sub">当前 ' + esc(info.currentName || '') + ' · 新版本 ' + size + '</p>'
+      + (forced ? '<div class="update-notes">当前版本过低，必须更新后才能继续使用。</div>' : '')
       + '<div class="update-notes">' + notes + '</div>'
       + '<div class="sheet-actions"><button class="btn btn-primary btn-block" id="app-update-btn" data-action="do-app-update">下载并安装</button>'
-      + '<button class="btn btn-ghost btn-block" data-action="close-sheet">稍后</button></div>';
+      + (forced ? '' : '<button class="btn btn-ghost btn-block" data-action="close-sheet">稍后</button>') + '</div>';
   }
   function maybeAutoCheckUpdate() {
     if (state.locked || state.autoUpdateChecked) return;
@@ -2116,7 +2131,7 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.6.4', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.6.5', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
@@ -2127,7 +2142,7 @@
       + '<div class="si">' + icon('wifi') + '</div><div class="st"><b>在线人数</b><span id="online-count">点击刷新</span></div>'
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
-      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.6.4', '1.5.0')) + '</span></div>'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.6.5', '1.5.0')) + '</span></div>'
       + '<div class="sv">' + icon('right') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="open-feedback">'
       + '<div class="si">' + icon('edit') + '</div><div class="st"><b>问题反馈</b><span>Bug、建议、内容问题，提交到 GitHub Issues</span></div>'
@@ -3050,6 +3065,9 @@
         break;
       case 'open-feedback':
         openFeedback();
+        break;
+      case 'send-feedback-server':
+        sendFeedbackServer();
         break;
       case 'submit-feedback':
         submitFeedback();
