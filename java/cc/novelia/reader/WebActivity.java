@@ -67,7 +67,8 @@ public class WebActivity extends Activity {
         bar.addView(back, new LinearLayout.LayoutParams(dp(42), dp(52)));
 
         titleView = new TextView(this);
-        titleView.setText("网页版");
+        String initialUrl = getIntent().getStringExtra("url");
+        titleView.setText(initialUrl != null && initialUrl.contains("forum.novelia.cc") ? "论坛" : "网页版");
         titleView.setTextSize(15);
         titleView.setTextColor(0xFF16221B);
         titleView.setSingleLine(true);

@@ -175,7 +175,8 @@
     edit: '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17Z"/><path d="M14 6l3 3"/>',
     star: '<path d="m12 3 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8L6.6 19.6l1-6L3.3 9.4l6-.9Z" fill="currentColor" stroke="none"/>',
     book: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v18H6.5A2.5 2.5 0 0 0 4 23V5.5Z"/><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v18h4.5A2.5 2.5 0 0 1 20 23V5.5Z"/>',
-    user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>'
+    user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+    forum: '<path d="M21 12a8 8 0 0 1-8 8H6l-3 2 1.2-4.2A8 8 0 1 1 21 12Z"/><path d="M8 11h8M8 14h5"/>'
   };
   function icon(name, cls) {
     return '<svg class="' + (cls || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || '') + '</svg>';
@@ -551,6 +552,11 @@
     const searchPill = '<button class="search-pill" data-action="go-search">' + icon('search')
       + '<span>搜索作品、作者或关键词</span><span class="hint">搜索</span></button>';
 
+    const forumEntry = '<button class="forum-entry" data-action="open-forum">'
+      + '<div class="fe-icon">' + icon('forum') + '</div>'
+      + '<div class="fe-copy"><b>小说讨论区</b><span>登录官方论坛，发主题、回复和讨论</span></div>'
+      + '<div class="fe-arrow">' + icon('right') + '</div></button>';
+
     const contHtml = cont ? '<a class="card" style="display:flex;align-items:center;gap:12px;margin-top:12px" href="javascript:void(0)" data-action="continue-reading">'
       + '<div class="si" style="width:38px;height:38px;border-radius:12px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;flex:none">' + icon('play') + '</div>'
       + '<div style="flex:1;min-width:0"><div style="font-size:9.5px;letter-spacing:1.2px;color:var(--faint)">继续阅读</div>'
@@ -564,9 +570,10 @@
 
     const content = topbar({
       logo: true, brand: true,
-      actions: '<button class="icon-btn" data-action="refresh-home" aria-label="刷新">' + icon('refresh') + '</button>'
+      actions: '<button class="icon-btn" data-action="open-forum" aria-label="论坛">' + icon('forum') + '</button>'
+        + '<button class="icon-btn" data-action="refresh-home" aria-label="刷新">' + icon('refresh') + '</button>'
         + '<button class="icon-btn" data-action="go-search" aria-label="搜索">' + icon('search') + '</button>'
-    }) + hero + searchPill + contHtml
+    }) + hero + searchPill + forumEntry + contHtml
       + '<div class="section-head"><h2>最近更新 <span class="sub">' + PROVIDERS[h.provider].label + (state.r18 ? ' · R18' : '') + '</span></h2>'
       + '<button class="link" data-action="refresh-home">换一批 ' + icon('refresh') + '</button></div>'
       + chips + '<div id="home-list">' + listHtml + '</div>';
@@ -1950,6 +1957,14 @@
     const title = '[反馈] ' + (labels[type] || '其他') + (summary ? '：' + summary : '');
     return { title: title, body: body, text: title + '\n\n' + body };
   }
+  function openForum() {
+    const url = 'https://forum.novelia.cc/c/novel';
+    try {
+      if (native && native.openWeb) native.openWeb(url);
+      else if (native && native.openExternal) native.openExternal(url);
+      else window.open(url, '_blank');
+    } catch (e) { toast('无法打开论坛'); }
+  }
   function openFeedback() { showSheet(feedbackFormHtml()); }
   function submitFeedback() {
     const p = feedbackPayload();
@@ -2098,6 +2113,10 @@
       + settingRow('folder', '恢复备份', '从 Novelia JSON 备份恢复；不包含已下载章节和登录令牌', 'import-backup', 'chevron')
       + '</div></div>'
 
+      + '<div class="setting-group"><h3>社区</h3><div class="setting-card">'
+      + settingRow('forum', '小说讨论区', '官方论坛，登录后可发主题、回复和讨论', 'open-forum', 'chevron')
+      + '</div></div>'
+
       + '<div class="setting-group"><h3>网页版</h3><div class="setting-card">'
       + settingRow('external', '网页版（含 R18）', '登录原站账号查看完整内容；进入前需确认已满 18 周岁', 'open-web-gate', 'chevron')
       + '</div></div>'
@@ -2131,7 +2150,7 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.6.5', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.6.6', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
@@ -2142,7 +2161,7 @@
       + '<div class="si">' + icon('wifi') + '</div><div class="st"><b>在线人数</b><span id="online-count">点击刷新</span></div>'
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
-      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.6.5', '1.5.0')) + '</span></div>'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.6.6', '1.5.0')) + '</span></div>'
       + '<div class="sv">' + icon('right') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="open-feedback">'
       + '<div class="si">' + icon('edit') + '</div><div class="st"><b>问题反馈</b><span>Bug、建议、内容问题，提交到 GitHub Issues</span></div>'
@@ -2554,6 +2573,9 @@
         navigate('#/search?p=all&t=' + encodeURIComponent(tag));
         break;
       }
+      case 'open-forum':
+        openForum();
+        break;
       case 'open-web-gate':
         showAgeGate('https://books.fishhawk.top/');
         break;

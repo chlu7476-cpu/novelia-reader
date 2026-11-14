@@ -1,10 +1,10 @@
 {
-  "versionCode": 61,
-  "versionName": "1.6.5",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.6.5.apk",
-  "notes": "1. 后台可上传 APK 并自动校验\n2. 在线趋势、版本分布\n3. 公告历史/定时/回滚、强制更新、反馈收件箱",
+  "versionCode": 62,
+  "versionName": "1.6.6",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.6.6.apk",
+  "notes": "1. 新增论坛入口：小说讨论区\n2. 内置官方论坛，登录后可发主题和回复\n3. 首页和「我的 → 社区」均可进入",
   "size": 144409,
-  "sha256": "a97b612ebcd165cc59efab87572a5c370eecd9bfc4098ecbcc7f0159d59bc745",
+  "sha256": "b053b14b63333da6a0644f4e0769372d20eeab05d12df72b8b38e442fdecbe09",
   "minVersionCode": 0,
   "force": false,
   "notice": {
