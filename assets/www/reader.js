@@ -78,6 +78,7 @@
   const provider = qs.get('provider') || '';
   const novel = qs.get('novel') || '';
   const isWenku = provider === 'wenku';
+  const isLocal = provider === 'local';
   let key = qs.get('key') || keyFor(provider, novel);
   let meta = null;
   let toc = [];
@@ -189,7 +190,7 @@
     showLoading();
     try {
       let cached = null;
-      if (isWenku) {
+      if (isWenku || isLocal) {
         const raw = sync(() => native.meta(key), '');
         if (raw) { try { cached = JSON.parse(raw); } catch (e) {} }
         if (!cached) throw new ApiError(0, '文库缓存不存在，请返回重新下载');
@@ -237,7 +238,7 @@
     try {
       let ch = null;
       let local = false;
-      if (isWenku) {
+      if (isWenku || isLocal) {
         if (idx < 0) idx = chapIndexById(id);
         const raw = sync(() => native.localChapter(key, idx), '');
         if (!raw) throw new ApiError(0, '文库章节缓存不存在');
@@ -595,7 +596,7 @@
   }
 
   function prefetchNext() {
-    if (isWenku) return;
+    if (isWenku || isLocal) return;
     const next = chapter && chapter.nextId;
     if (!next || loading) return;
     const idx = chapIndexById(next);
@@ -1029,14 +1030,14 @@
       case 'close-sheet': closeSheet(); break;
       case 'toc-more': tocLimit += 500; { const r = $('#toc-rows'); if (r) r.innerHTML = tocRows(); } break;
       case 'export-book':
-        if (isWenku) { toast('文库缓存暂不支持导出'); break; }
+        if (isWenku || isLocal) { toast('文库缓存暂不支持导出'); break; }
         showExportSheet();
         break;
       case 'export-format':
         doExport(el.getAttribute('data-format') || 'txt');
         break;
       case 'download-all':
-        if (isWenku) { toast('文库已缓存，无需重复下载'); break; }
+        if (isWenku || isLocal) { toast('文库已缓存，无需重复下载'); break; }
         if (native && native.download) {
           try {
             const queued = native.download(provider, novel, 0, 1, 0);
@@ -1082,8 +1083,8 @@
         break;
       case 'share':
         if (native && native.share) {
-          const url = isWenku ? ('https://books.fishhawk.top/wenku/' + enc(novel)) : ('https://books.fishhawk.top/novel/' + enc(provider) + '/' + enc(novel));
-          try { native.share((bookTitle() || '') + '\n' + url); } catch (err) {}
+          const url = isLocal ? '' : (isWenku ? ('https://books.fishhawk.top/wenku/' + enc(novel)) : ('https://books.fishhawk.top/novel/' + enc(provider) + '/' + enc(novel)));
+          try { native.share((bookTitle() || '') + (url ? '\n' + url : '')); } catch (err) {}
         }
         break;
       default: break;

@@ -1,8 +1,8 @@
 {
-  "versionCode": 55,
-  "versionName": "1.5.8",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.5.8.apk",
-  "notes": "1. 新增简洁模式：隐藏首页大图、扁平列表、减少装饰\n2. 导出书籍移到「下载」页，支持多选后导出 TXT/EPUB\n3. 工具栏展开时音量键只调音量，收起后才翻页",
-  "size": 140313,
-  "sha256": "b5b0325adb4da0aa5349698e05f1f2f3900dc9a7e96db896c12bf5749e5d0aa6"
+  "versionCode": 56,
+  "versionName": "1.6.0",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.6.0.apk",
+  "notes": "1. 书架新增导入本地书：EPUB / TXT / SRT，可多选\n2. 本地书直接进入书架并支持阅读、进度和统计\n3. 保留简洁模式、下载页多选导出",
+  "size": 144409,
+  "sha256": "93a95e1c4971ec0937b226d5d58c2dd66bee4234f384661ff9ab37a6bb96b51e"
 }

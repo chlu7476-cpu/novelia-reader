@@ -17,7 +17,8 @@
     hameln: { label: 'Hameln', short: 'HAMELN' },
     pixiv: { label: 'Pixiv', short: 'PIXIV' },
     novelup: { label: 'Novelup', short: 'NOVELUP' },
-    alphapolis: { label: 'Alphapolis', short: 'ALPHAPOLIS' }
+    alphapolis: { label: 'Alphapolis', short: 'ALPHAPOLIS' },
+    local: { label: '本地导入', short: 'LOCAL' }
   };
   const PROVIDER_ORDER = ['syosetu', 'kakuyomu', 'novelup', 'hameln', 'pixiv', 'alphapolis'];
 
@@ -1488,8 +1489,9 @@
         + (state.shelfManage ? '<div class="bulk-bar"><span>已选 ' + state.shelfSelected.size + ' 本</span><button data-action="shelf-select-all">全选</button><button data-action="bulk-category">分类</button><button data-action="bulk-status">状态</button><button data-action="bulk-subscribe">订阅</button><button data-action="bulk-remove" class="danger">删除</button></div>' : '')
         + (list.length ? list.map(shelfCardHtml).join('') : '<div class="empty small">没有符合条件的书</div>');
     }
-    const content = topbar({ logo: true, brand: true, actions: '<button class="icon-btn" data-action="go-stats" aria-label="阅读统计">' + icon('star') + '</button><button class="icon-btn" data-action="go-search" aria-label="搜索">' + icon('search') + '</button>' })
-      + '<div class="section-head"><h2>我的书架 <span class="sub">' + shelf.length + ' 本</span></h2></div>' + body;
+    const content = topbar({ logo: true, brand: true, actions: '<button class="icon-btn" data-action="import-local" aria-label="导入本地书">' + icon('download') + '</button><button class="icon-btn" data-action="go-stats" aria-label="阅读统计">' + icon('star') + '</button><button class="icon-btn" data-action="go-search" aria-label="搜索">' + icon('search') + '</button>' })
+      + '<div class="section-head"><h2>我的书架 <span class="sub">' + shelf.length + ' 本</span></h2>'
+      + '<button class="link" data-action="import-local">导入 EPUB / TXT / SRT</button></div>' + body;
     return { html: shell(content, 'shelf'), tab: 'shelf' };
   }
   function checkShelfUpdates(manual) {
@@ -1556,6 +1558,32 @@
     }
   }
 
+  async function importLocalBooks() {
+    try {
+      const raw = await invokeLong('importLocalBook');
+      const arr = JSON.parse(raw || '[]');
+      let added = 0;
+      for (const m of arr) {
+        const k = m._key || m.novelId;
+        if (!k || shelf.some(x => x.key === k)) continue;
+        const title = m.titleZh || m.titleJp || '本地书籍';
+        shelf.unshift({
+          key: k, provider: 'local', novel: m.novelId || k,
+          title: title, titleJp: m.titleJp || '', author: m.author || '',
+          total: (m.toc || []).length, addedAt: Date.now(),
+          status: 'want', category: '本地导入', tags: [], subscribe: false,
+          autoDownload: false, newChapters: 0, updateAt: Date.now()
+        });
+        if (categories.indexOf('本地导入') < 0) categories.push('本地导入');
+        added++;
+      }
+      saveShelf();
+      if (state.route.name === 'shelf') render();
+      toast(added ? ('已导入 ' + added + ' 本本地书') : '没有新增书籍');
+    } catch (e) {
+      toast(e.message || '导入失败');
+    }
+  }
   function shelfBook(key) { return shelf.find(x => x.key === key); }
   function shelfRead(key) {
     const item = shelfBook(key);
@@ -1564,6 +1592,10 @@
     item.lastReadAt = Date.now();
     item.newChapters = 0;
     saveShelf();
+    if (item.provider === 'local') {
+      openReader('local', item.novel, '0', 0, item.title || '', item.key);
+      return;
+    }
     const p = progress[key];
     if (p && p.chapterId) openFromProgress(Object.assign({ key: key, provider: item.provider, novel: item.novel }, p));
     else {
@@ -2041,7 +2073,7 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.5.8', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.6.0', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
@@ -2049,7 +2081,7 @@
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<div class="note" style="text-align:left;margin:8px 0 0">按首次安装匿名计数，不收集账号或阅读内容；公开计数器可能被刷，仅作参考。</div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
-      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.5.8', '1.5.0')) + '</span></div>'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.6.0', '1.5.0')) + '</span></div>'
       + '<div class="sv">' + icon('right') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="open-feedback">'
       + '<div class="si">' + icon('edit') + '</div><div class="st"><b>问题反馈</b><span>Bug、建议、内容问题，提交到 GitHub Issues</span></div>'
@@ -2600,6 +2632,9 @@
         break;
       case 'shelf-check':
         checkShelfUpdates(true);
+        break;
+      case 'import-local':
+        importLocalBooks();
         break;
       case 'shelf-manage-toggle':
         state.shelfManage = !state.shelfManage;

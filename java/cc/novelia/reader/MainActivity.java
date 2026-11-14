@@ -2,6 +2,7 @@ package cc.novelia.reader;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.ClipData;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Insets;
@@ -45,6 +46,7 @@ public class MainActivity extends Activity {
     private static final int REQ_IMPORT_BACKUP = 902;
     private static final int REQ_EXPORT_BOOK = 903;
     private static final int REQ_EXPORT_FOLDER = 904;
+    private static final int REQ_IMPORT_LOCAL = 905;
     private TextToSpeech tts;
     private boolean ttsReady = false;
     private String pendingExportId;
@@ -55,6 +57,7 @@ public class MainActivity extends Activity {
     private String pendingBookMime;
     private String pendingFolderId;
     private java.util.ArrayList<File> pendingFolderFiles;
+    private String pendingLocalImportId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -340,6 +343,23 @@ public class MainActivity extends Activity {
         }
     }
 
+    void startImportLocalBook(String id) {
+        pendingLocalImportId = id;
+        try {
+            Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType("*/*");
+            i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+            i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                    "application/epub+zip", "text/plain", "application/x-subrip", "text/srt", "application/octet-stream"
+            });
+            startActivityForResult(i, REQ_IMPORT_LOCAL);
+        } catch (Exception e) {
+            pendingLocalImportId = null;
+            if (bridge != null) bridge.deliver(id, 0, "无法打开文件选择器");
+        }
+    }
+
     void startExportFolder(String id, java.util.ArrayList<File> files) {
         if (files == null || files.isEmpty()) {
             if (bridge != null) bridge.deliver(id, 0, "没有可导出的文件");
@@ -417,6 +437,33 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 bridge.deliver(id, 0, e.getMessage() == null ? "导出失败" : e.getMessage());
             }
+        } else if (requestCode == REQ_IMPORT_LOCAL) {
+            String id = pendingLocalImportId;
+            pendingLocalImportId = null;
+            if (id == null || bridge == null) return;
+            if (resultCode != RESULT_OK || data == null) {
+                bridge.deliver(id, 0, "已取消");
+                return;
+            }
+            java.util.ArrayList<Uri> uris = new java.util.ArrayList<>();
+            if (data.getClipData() != null) {
+                ClipData clip = data.getClipData();
+                for (int i = 0; i < clip.getItemCount(); i++) {
+                    Uri u = clip.getItemAt(i).getUri();
+                    if (u != null) uris.add(u);
+                }
+            } else if (data.getData() != null) {
+                uris.add(data.getData());
+            }
+            if (uris.isEmpty()) { bridge.deliver(id, 0, "没有选择文件"); return; }
+            new Thread(() -> {
+                try {
+                    org.json.JSONArray arr = BookImporter.importFiles(this, uris);
+                    bridge.deliver(id, 200, arr.toString());
+                } catch (Exception e) {
+                    bridge.deliver(id, 0, e.getMessage() == null ? "导入失败" : e.getMessage());
+                }
+            }).start();
         } else if (requestCode == REQ_EXPORT_FOLDER) {
             String id = pendingFolderId;
             java.util.ArrayList<File> files = pendingFolderFiles;

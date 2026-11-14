@@ -163,6 +163,11 @@ final class Bridge {
     }
 
     @JavascriptInterface
+    public void importLocalBook(String id) {
+        activity.startImportLocalBook(id);
+    }
+
+    @JavascriptInterface
     public void exportBooks(String id, String itemsJson, String format) {
         pool.execute(() -> {
             try {
@@ -430,7 +435,7 @@ final class Bridge {
 
     @JavascriptInterface
     public String version() {
-        return "1.5.8";
+        return "1.6.0";
     }
 
     @JavascriptInterface

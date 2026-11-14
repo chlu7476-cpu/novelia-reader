@@ -117,6 +117,126 @@ final class Wenku {
         return new JSONObject(Store.metaJson(ctx, key));
     }
 
+    static JSONObject importLocal(Context ctx, String filename, byte[] data) throws Exception {
+        if (data == null || data.length == 0) throw new Exception("文件为空");
+        String name = filename == null || filename.trim().isEmpty() ? "本地书籍" : filename.trim();
+        String lower = name.toLowerCase(java.util.Locale.US);
+        String title = name.replaceFirst("(?i)\\.(epub|txt|srt)$", "");
+        Parsed parsed;
+        if (lower.endsWith(".epub")) {
+            parsed = parseEpub(data);
+        } else if (lower.endsWith(".srt")) {
+            parsed = parseSrt(decodeText(data));
+        } else {
+            parsed = parseTxtBook(decodeText(data), title);
+        }
+        if (parsed == null || parsed.chapters.isEmpty()) throw new Exception("没有找到可读内容");
+        if (parsed.title == null || parsed.title.trim().isEmpty()) parsed.title = title;
+        String key = Store.key("local", hash(name + "|" + data.length + "|" + System.currentTimeMillis()));
+        JSONObject meta = new JSONObject();
+        meta.put("providerId", "local");
+        meta.put("novelId", key);
+        meta.put("source", "local");
+        meta.put("local", true);
+        meta.put("parserVersion", 5);
+        meta.put("titleJp", parsed.title);
+        meta.put("titleZh", parsed.title);
+        meta.put("author", parsed.author == null ? "" : parsed.author);
+        meta.put("total", parsed.chapters.size());
+        meta.put("downloadable", parsed.chapters.size());
+        meta.put("createdAt", System.currentTimeMillis());
+        JSONArray toc = new JSONArray();
+        for (int i = 0; i < parsed.chapters.size(); i++) {
+            JSONObject item = new JSONObject();
+            String ct = parsed.chapters.get(i).title;
+            item.put("titleJp", ct);
+            item.put("titleZh", ct);
+            item.put("chapterId", String.valueOf(i));
+            toc.put(item);
+        }
+        meta.put("toc", toc);
+        meta.put("_key", key);
+        for (int i = 0; i < parsed.chapters.size(); i++) {
+            Chapter c = parsed.chapters.get(i);
+            JSONObject ch = new JSONObject();
+            ch.put("titleJp", c.title);
+            ch.put("titleZh", c.title);
+            ch.put("novelTitleJp", parsed.title);
+            ch.put("novelTitleZh", parsed.title);
+            JSONArray paras = new JSONArray();
+            for (String para : c.paragraphs) paras.put(para);
+            ch.put("paragraphs", paras);
+            ch.put("sakuraParagraphs", paras);
+            ch.put("gptParagraphs", paras);
+            ch.put("youdaoParagraphs", paras);
+            ch.put("baiduParagraphs", paras);
+            Store.saveChapter(ctx, key, i, ch.toString());
+        }
+        Store.saveMeta(ctx, key, meta);
+        return new JSONObject(Store.metaJson(ctx, key));
+    }
+
+    private static String decodeText(byte[] data) {
+        String utf8 = new String(data, StandardCharsets.UTF_8);
+        if (utf8.indexOf('\uFFFD') < 0) return utf8.replace("\uFEFF", "");
+        try { return new String(data, "GB18030").replace("\uFEFF", ""); }
+        catch (Exception e) { return utf8; }
+    }
+
+    private static Parsed parseTxtBook(String text, String fallbackTitle) {
+        Parsed p = new Parsed();
+        p.title = fallbackTitle == null ? "" : fallbackTitle;
+        String[] lines = text.split("\\r?\\n");
+        java.util.regex.Pattern heading = java.util.regex.Pattern.compile(
+                "^\\s*(第[零一二三四五六七八九十百千万0-9]+[章卷回节话]|Chapter\\s+\\d+|CHAPTER\\s+\\d+)\\s*.*$",
+                java.util.regex.Pattern.CASE_INSENSITIVE);
+        Chapter current = null;
+        for (String line : lines) {
+            String t = line.trim();
+            if (t.isEmpty()) continue;
+            if (heading.matcher(t).matches() && t.length() <= 90) {
+                if (current != null && !current.paragraphs.isEmpty()) p.chapters.add(current);
+                current = new Chapter();
+                current.title = t;
+                current.paragraphs = new ArrayList<>();
+            } else {
+                if (current == null) {
+                    current = new Chapter();
+                    current.title = p.title;
+                    current.paragraphs = new ArrayList<>();
+                }
+                current.paragraphs.add(t);
+            }
+        }
+        if (current != null && !current.paragraphs.isEmpty()) p.chapters.add(current);
+        return p;
+    }
+
+    private static Parsed parseSrt(String text) {
+        Parsed p = new Parsed();
+        Chapter c = new Chapter();
+        c.title = "字幕文本";
+        c.paragraphs = new ArrayList<>();
+        java.util.regex.Pattern time = java.util.regex.Pattern.compile("\\d{1,2}:\\d{2}:\\d{2}[,.]\\d{3}\\s*-->");
+        StringBuilder block = new StringBuilder();
+        for (String line : text.split("\\r?\\n")) {
+            String t = line.trim();
+            if (t.isEmpty()) {
+                if (block.length() > 0) {
+                    c.paragraphs.add(block.toString().trim());
+                    block.setLength(0);
+                }
+                continue;
+            }
+            if (t.matches("^\\d+$") || time.matcher(t).find()) continue;
+            if (block.length() > 0) block.append(' ');
+            block.append(t);
+        }
+        if (block.length() > 0) c.paragraphs.add(block.toString().trim());
+        if (!c.paragraphs.isEmpty()) p.chapters.add(c);
+        return p;
+    }
+
     private static String hash(String input) throws Exception {
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         byte[] out = md.digest(input.getBytes(StandardCharsets.UTF_8));
