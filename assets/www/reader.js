@@ -652,6 +652,7 @@
 
   /* ---------------- toc / settings sheets ---------------- */
   function showSheet(html, kind) {
+    clearAutoTurn();
     sheetKind = kind || '';
     sheetEl.innerHTML = '<div class="grab"></div><button class="sheet-x" data-act="close-sheet" aria-label="关闭">×</button>' + html;
     sheetEl.classList.add('show');
