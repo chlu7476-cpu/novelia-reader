@@ -1,10 +1,10 @@
 {
-  "versionCode": 64,
-  "versionName": "1.6.8",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.6.8.apk",
-  "notes": "1. 问题反馈不再跳转 GitHub\n2. 反馈直接发送到服务器后台\n3. 保留复制反馈内容",
+  "versionCode": 65,
+  "versionName": "1.6.9",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.6.9.apk",
+  "notes": "1. 修复原生论坛列表/详情请求格式\n2. 论坛登录后可正常浏览、发帖、回复\n3. 反馈只发送到服务器",
   "size": 148505,
-  "sha256": "fc75922cb7ddb70a0e31b8bb37088fac24200194d1e3abc299091735e358f466",
+  "sha256": "9500937367875d35a5196c114f7257142a1fe35d096471f343b09608e54900a0",
   "minVersionCode": 0,
   "force": false,
   "notice": {

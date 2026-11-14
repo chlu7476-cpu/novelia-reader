@@ -56,7 +56,7 @@ final class ForumClient {
             conn.setRequestProperty("Origin", origin);
             conn.setRequestProperty("Referer", origin + "/");
             if (token != null && !token.isEmpty()) conn.setRequestProperty("Authorization", "Bearer " + token);
-            if (body != null) {
+            if (body != null && !body.isEmpty() && !"GET".equals(method)) {
                 conn.setDoOutput(true);
                 conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
                 byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
