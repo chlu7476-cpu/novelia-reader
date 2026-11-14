@@ -337,6 +337,22 @@ final class Bridge {
     }
 
     @JavascriptInterface
+    public void saveForumToken(String token) {
+        try {
+            activity.getSharedPreferences("account-session", android.content.Context.MODE_PRIVATE).edit()
+                    .putString("forumToken", token == null ? "" : token).apply();
+        } catch (Exception ignored) {}
+    }
+
+    @JavascriptInterface
+    public String loadForumToken() {
+        try {
+            return activity.getSharedPreferences("account-session", android.content.Context.MODE_PRIVATE)
+                    .getString("forumToken", "");
+        } catch (Exception e) { return ""; }
+    }
+
+    @JavascriptInterface
     public String authInfo() {
         return ApiClient.authInfo(activity).toString();
     }
@@ -500,7 +516,7 @@ final class Bridge {
 
     @JavascriptInterface
     public String version() {
-        return "1.7.4";
+        return "1.7.5";
     }
 
     @JavascriptInterface
