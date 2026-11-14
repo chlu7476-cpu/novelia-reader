@@ -37,6 +37,7 @@ public class MainActivity extends Activity {
     private WebView webView;
     private boolean dark = false;
     private boolean readerMode = false;
+    private volatile boolean volumePaging = false;
     private int insetTop = 0, insetBottom = 0, insetLeft = 0, insetRight = 0;
     private Bridge bridge;
     private static final int REQ_EXPORT_BACKUP = 901;
@@ -240,17 +241,53 @@ public class MainActivity extends Activity {
         w.setOnLongClickListener(v -> false);
     }
 
+    private boolean isReaderPage() {
+        try {
+            String url = webView == null ? null : webView.getUrl();
+            return url != null && url.contains("reader.html");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    void setVolumePaging(boolean enabled) {
+        volumePaging = enabled;
+    }
+
+    private void turnPageByVolume(int code) {
+        if (webView == null) return;
+        try {
+            webView.requestFocus();
+            int dir = code == KeyEvent.KEYCODE_VOLUME_UP ? -1 : 1;
+            webView.evaluateJavascript("window.ReaderApp&&ReaderApp.turnPage(" + dir + ");", null);
+        } catch (Exception ignored) {}
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         int code = event.getKeyCode();
-        if (readerMode && (code == KeyEvent.KEYCODE_VOLUME_UP || code == KeyEvent.KEYCODE_VOLUME_DOWN)) {
-            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0 && webView != null) {
-                int dir = code == KeyEvent.KEYCODE_VOLUME_UP ? -1 : 1;
-                webView.evaluateJavascript("window.ReaderApp&&ReaderApp.turnPage(" + dir + ");", null);
-            }
+        if (volumePaging && isReaderPage() && (code == KeyEvent.KEYCODE_VOLUME_UP || code == KeyEvent.KEYCODE_VOLUME_DOWN)) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) turnPageByVolume(code);
             return true;
         }
         return super.dispatchKeyEvent(event);
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (volumePaging && isReaderPage() && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
+            if (event.getRepeatCount() == 0) turnPageByVolume(keyCode);
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (volumePaging && isReaderPage() && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
+            return true;
+        }
+        return super.onKeyUp(keyCode, event);
     }
 
     public void setDark(boolean value) {

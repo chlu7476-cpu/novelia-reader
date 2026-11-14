@@ -913,10 +913,13 @@
   }
 
   /* ---------------- bars / gestures ---------------- */
+  function setVolumePaging(enabled) {
+    try { if (native && native.setVolumePaging) native.setVolumePaging(!!enabled); } catch (e) {}
+  }
   function hideBars(hidden) {
     const next = !!hidden;
-    if (document.body.classList.contains('bars-hidden') === next) return;
     document.body.classList.toggle('bars-hidden', next);
+    setVolumePaging(next);
   }
   function scheduleBarsHide() {
     clearTimeout(barsTimer);

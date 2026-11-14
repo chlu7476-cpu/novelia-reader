@@ -1,8 +1,8 @@
 {
-  "versionCode": 52,
-  "versionName": "1.5.5",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.5.5.apk",
-  "notes": "1. 顶部工具栏新增导出书籍图标\n2. 工具栏/弹层展开时，音量键会先收起再翻页\n3. 修复导出入口未显示",
+  "versionCode": 53,
+  "versionName": "1.5.6",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.5.6.apk",
+  "notes": "1. 工具栏展开时音量键只调音量\n2. 工具栏收起后音量键才翻页\n3. 保留顶部导出图标和设置内导出",
   "size": 140313,
-  "sha256": "b8d74fd0a35b7206d8808db7affd907fa20ad512f91f8a72114b6657e1bdd9da"
+  "sha256": "278d3386f0bef82300708a3125b0c968a0731b447a9c561ccc6f4dfe5f03e6e3"
 }

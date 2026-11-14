@@ -148,6 +148,11 @@ final class Bridge {
     }
 
     @JavascriptInterface
+    public void setVolumePaging(boolean enabled) {
+        activity.setVolumePaging(enabled);
+    }
+
+    @JavascriptInterface
     public void speak(String text) {
         main.post(() -> activity.speakText(text));
     }
@@ -404,7 +409,7 @@ final class Bridge {
 
     @JavascriptInterface
     public String version() {
-        return "1.5.5";
+        return "1.5.6";
     }
 
     @JavascriptInterface
