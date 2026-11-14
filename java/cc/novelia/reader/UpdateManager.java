@@ -19,6 +19,7 @@ import java.util.Locale;
 /** Static GitHub Pages update channel: update.json + signed APK. */
 final class UpdateManager {
     static final String MANIFEST_URL = "https://novelia-api.gainful-mantis.workers.dev/v1/update";
+    static final String FALLBACK_MANIFEST_URL = "https://chlu7476-cpu.github.io/novelia-reader/update.json";
     private static final String APK_HOST = "chlu7476-cpu.github.io";
     private static boolean downloading = false;
 
@@ -38,7 +39,16 @@ final class UpdateManager {
         long currentCode = android.os.Build.VERSION.SDK_INT >= 28 ? pi.getLongVersionCode() : pi.versionCode;
         out.put("currentCode", currentCode);
         out.put("currentName", pi.versionName == null ? "" : pi.versionName);
-        JSONObject remote = new JSONObject(get(MANIFEST_URL + "?t=" + System.currentTimeMillis(), ctx, 12000));
+        JSONObject remote = null;
+        Exception last = null;
+        String cacheBust = "?t=" + System.currentTimeMillis();
+        for (String manifest : new String[]{FALLBACK_MANIFEST_URL, MANIFEST_URL}) {
+            try {
+                remote = new JSONObject(get(manifest + cacheBust, ctx, 9000));
+                break;
+            } catch (Exception e) { last = e; }
+        }
+        if (remote == null) throw new Exception(last == null ? "更新服务不可用" : last.getMessage());
         long code = remote.optLong("versionCode", 0);
         String name = remote.optString("versionName", "");
         String url = remote.optString("apkUrl", "");
