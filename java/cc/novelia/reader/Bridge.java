@@ -341,6 +341,28 @@ final class Bridge {
     }
 
     @JavascriptInterface
+    public void updateInfo(String id) {
+        pool.execute(() -> {
+            try {
+                resolve(id, 200, UpdateManager.check(activity).toString());
+            } catch (Exception e) {
+                resolve(id, 0, e.getMessage() == null ? "检查更新失败" : e.getMessage());
+            }
+        });
+    }
+
+    @JavascriptInterface
+    public void installUpdate(String id, String url, String sha) {
+        pool.execute(() -> {
+            try {
+                resolve(id, 200, UpdateManager.install(activity, url == null ? "" : url, sha == null ? "" : sha).toString());
+            } catch (Exception e) {
+                resolve(id, 0, e.getMessage() == null ? "更新失败" : e.getMessage());
+            }
+        });
+    }
+
+    @JavascriptInterface
     public void usageCount(String id) {
         pool.execute(() -> {
             try {
@@ -356,7 +378,7 @@ final class Bridge {
 
     @JavascriptInterface
     public String version() {
-        return "1.4.26";
+        return "1.4.28";
     }
 
     @JavascriptInterface

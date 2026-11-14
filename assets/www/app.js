@@ -291,6 +291,8 @@
     dlChoice: 0,
     dlChoiceSet: false,
     usage: { count: null, loading: false, error: '' },
+    appUpdate: { checking: false },
+    pendingUpdate: null,
     sheet: null,
     confirmEl: null,
     booted: false
@@ -1030,7 +1032,7 @@
       + '<div id="comment-compose-wrap">' + commentComposerHtml() + '</div>'
       + '<div id="comment-list"></div><div id="comment-footer"></div>';
   }
-  async function loadComments(reset) {
+  async function loadComments(reset, page) {
     const b = state.book;
     if (!b) return;
     const key = commentKey(b._provider, b._novel);
@@ -1040,26 +1042,51 @@
       state.comments.key = key;
       state.comments.items = [];
       state.comments.page = 0;
+      state.comments.pages = 1;
       state.comments.total = 0;
-      state.comments.done = false;
       state.comments.error = '';
     }
+    const target = Math.max(1, parseInt(page || state.comments.page || 1, 10) || 1);
     state.comments.loading = true;
+    state.comments.error = '';
     renderCommentsSheet();
     try {
-      const data = await forumApi(commentPath(key, state.comments.page + 1, 20));
+      const size = 20;
+      const data = await forumApi(commentPath(key, target, size));
       const items = visibleComments(data.items);
-      const seen = new Set(state.comments.items.map(x => x.id));
-      items.forEach(x => { if (!seen.has(x.id)) { state.comments.items.push(x); seen.add(x.id); } });
-      state.comments.page += 1;
-      state.comments.total = Number(data.total) || state.comments.items.length;
-      state.comments.done = items.length < 20 || state.comments.items.length >= state.comments.total;
+      const total = Number(data.total) || items.length;
+      const pages = Math.max(1, Math.ceil(total / size));
+      const safePage = Math.min(target, pages);
+      state.comments.items = items;
+      state.comments.page = safePage;
+      state.comments.pages = pages;
+      state.comments.total = total;
       state.comments.error = '';
+      if (safePage !== target) {
+        state.comments.loading = false;
+        loadComments(false, safePage);
+        return;
+      }
     } catch (e) {
       state.comments.error = e.message || '讨论加载失败';
+      state.comments.items = [];
     }
     state.comments.loading = false;
     renderCommentsSheet();
+  }
+  function commentPagerHtml(c) {
+    const pages = Math.max(1, Number(c.pages) || 1);
+    const page = Math.min(pages, Math.max(1, Number(c.page) || 1));
+    if (pages <= 1) return '';
+    return '<div class="comment-pager">'
+      + '<button class="btn btn-sm btn-ghost" data-action="comment-prev"' + (page <= 1 || c.loading ? ' disabled' : '') + '>上一页</button>'
+      + '<span>第 ' + page + ' / ' + pages + ' 页</span>'
+      + '<button class="btn btn-sm btn-ghost" data-action="comment-next"' + (page >= pages || c.loading ? ' disabled' : '') + '>下一页</button>'
+      + '</div>'
+      + '<div class="comment-jump">'
+      + '<input id="comment-page-input" type="number" inputmode="numeric" min="1" max="' + pages + '" value="' + page + '" aria-label="评论页码">'
+      + '<button class="btn btn-sm btn-ghost" data-action="comment-go"' + (c.loading ? ' disabled' : '') + '>跳转</button>'
+      + '</div>';
   }
   function renderCommentsSheet() {
     const list = $('#comment-list');
@@ -1080,12 +1107,14 @@
     if (footer) {
       const b = state.book;
       const url = b ? ('https://books.fishhawk.top/novel/' + encodePath(b._provider) + '/' + encodePath(b._novel)) : 'https://books.fishhawk.top/';
-      footer.innerHTML = (c.loading ? '<div class="comment-loading" style="padding:10px"><span class="spin"></span> 加载中…</div>' : '')
-        + (!c.loading && !c.done && c.items.length ? '<button class="btn btn-ghost btn-block" data-action="load-more-comments" style="margin-bottom:8px">加载更多</button>' : '')
+      footer.innerHTML = (c.error && c.items.length ? '<div class="comment-error">' + esc(c.error) + '<button data-action="retry-comment-list">重试</button></div>' : '')
+        + commentPagerHtml(c)
+        + (c.loading ? '<div class="comment-loading" style="padding:8px"><span class="spin"></span> 加载中…</div>' : '')
         + '<button class="btn btn-ghost btn-block" data-action="comment-web" data-url="' + esc(url) + '">在网页版查看 / 管理评论</button>'
         + '<div class="note" style="text-align:center">评论提交到原站论坛；发布权限和频率由原站账号决定。</div>';
     }
   }
+
   function openComments() {
     const b = state.book;
     if (!b) return;
@@ -1536,6 +1565,42 @@
       state.relay = sync(() => native.relayGet(), 'auto') || 'auto';
     }
   }
+  async function checkAppUpdate(manual) {
+    if (state.appUpdate.checking) return;
+    state.appUpdate.checking = true;
+    if (manual) toast('正在检查更新…');
+    try {
+      const raw = await invoke('updateInfo');
+      const info = JSON.parse(raw);
+      if (!info.hasUpdate) {
+        if (manual) toast('已是最新版本 ' + (info.currentName || ''));
+        return;
+      }
+      state.pendingUpdate = info;
+      showSheet(appUpdateSheet(info));
+    } catch (e) {
+      if (manual) toast(e.message || '检查更新失败');
+    } finally {
+      state.appUpdate.checking = false;
+    }
+  }
+  function appUpdateSheet(info) {
+    const notes = esc(info.notes || '修复问题并改进体验。').replace(/\n/g, '<br>');
+    const size = info.size ? fmtBytes(info.size) : '约 117 KB';
+    return '<h2>发现新版本 ' + esc(info.versionName || '') + '</h2>'
+      + '<p class="sheet-sub">当前 ' + esc(info.currentName || '') + ' · 新版本 ' + size + '</p>'
+      + '<div class="update-notes">' + notes + '</div>'
+      + '<div class="sheet-actions"><button class="btn btn-primary btn-block" id="app-update-btn" data-action="do-app-update">下载并安装</button>'
+      + '<button class="btn btn-ghost btn-block" data-action="close-sheet">稍后</button></div>';
+  }
+  function maybeAutoCheckUpdate() {
+    if (state.locked) return;
+    let last = 0;
+    try { last = Number(localStorage.getItem('nr.updateCheck') || 0) || 0; } catch (e) {}
+    if (Date.now() - last < 6 * 60 * 60 * 1000) return;
+    try { localStorage.setItem('nr.updateCheck', String(Date.now())); } catch (e) {}
+    checkAppUpdate(false);
+  }
   function settingsView() {
     const p = state.proxy || {};
     const test = state.proxyResult;
@@ -1598,13 +1663,16 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.4.26', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.4.28', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
       + '<div class="si">' + icon('user') + '</div><div class="st"><b>使用人数</b><span id="usage-count">正在获取…</span></div>'
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<div class="note" style="text-align:left;margin:8px 0 0">按首次安装匿名计数，不收集账号或阅读内容；公开计数器可能被刷，仅作参考。</div>'
+      + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.4.28', '1.4.28')) + '</span></div>'
+      + '<div class="sv">' + icon('right') + '</div></button>'
       + '<div class="divider"></div>'
       + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
       + '<button class="btn btn-sm btn-ghost" data-action="open-site">访问原站</button>'
@@ -2362,9 +2430,39 @@
       case 'open-comments':
         openComments();
         break;
-      case 'load-more-comments':
-        loadComments(false);
+      case 'check-app-update':
+        checkAppUpdate(true);
         break;
+      case 'do-app-update': {
+        const info = state.pendingUpdate;
+        if (!info) break;
+        const btn = $('#app-update-btn');
+        if (btn) { btn.disabled = true; btn.textContent = '下载中…'; }
+        try {
+          await invoke('installUpdate', info.apkUrl, info.sha256 || '');
+          toast('已打开安装器，请确认安装');
+          closeSheet();
+        } catch (e) {
+          if (btn) { btn.disabled = false; btn.textContent = '下载并安装'; }
+          toast(e.message || '更新失败');
+        }
+        break;
+      }
+      case 'load-more-comments':
+        loadComments(false, state.comments.page + 1);
+        break;
+      case 'comment-prev':
+        loadComments(false, state.comments.page - 1);
+        break;
+      case 'comment-next':
+        loadComments(false, state.comments.page + 1);
+        break;
+      case 'comment-go': {
+        const input = $('#comment-page-input');
+        const n = parseInt(input ? input.value : '1', 10) || 1;
+        loadComments(false, n);
+        break;
+      }
       case 'retry-comment-list':
         loadComments(true);
         break;
@@ -2548,6 +2646,7 @@
     refreshDownloads();
     state.route = parseRoute();
     onRoute();
+    setTimeout(maybeAutoCheckUpdate, 2500);
   } catch (e) {
     try {
       var box = document.createElement('div');
