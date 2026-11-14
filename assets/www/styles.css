@@ -658,3 +658,64 @@ button.tag { border: 0; cursor: pointer; font-family: inherit; }
 .feedback-form textarea { resize: vertical; min-height: 110px; line-height: 1.6; }
 .feedback-form .feedback-check { flex-direction: row; align-items: center; gap: 8px; font-size: 12px; }
 .feedback-form .feedback-check input { width: 16px; height: 16px; }
+
+/* ---------- motion / polish (1.4.30) ---------- */
+@keyframes pageIn { from { opacity: .35; transform: translateY(10px) scale(.996); } to { opacity: 1; transform: none; } }
+@keyframes riseIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes tabPop { 0% { transform: scale(.88); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+@keyframes pulseSoft { 0%,100% { opacity: .55; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.1); } }
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, 14px) scale(.97); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+
+#app.route-anim .page { animation: pageIn .34s cubic-bezier(.22,.8,.26,1) both; }
+#app.route-anim .page > .card,
+#app.route-anim .page > .setting-group,
+#app.route-anim .page > .shelf-card,
+#app.route-anim .page > .dl-card,
+#app.route-anim .page > .hero,
+#app.route-anim .page > .book-hero,
+#app.route-anim .page > .section-head { animation: riseIn .4s cubic-bezier(.22,.8,.26,1) both; }
+#app.route-anim .page > :nth-child(1) { animation-delay: 0ms; }
+#app.route-anim .page > :nth-child(2) { animation-delay: 30ms; }
+#app.route-anim .page > :nth-child(3) { animation-delay: 60ms; }
+#app.route-anim .page > :nth-child(4) { animation-delay: 90ms; }
+#app.route-anim .page > :nth-child(5) { animation-delay: 120ms; }
+#app.route-anim .page > :nth-child(6) { animation-delay: 150ms; }
+#app.route-anim .page > :nth-child(7) { animation-delay: 180ms; }
+
+.topbar { transition: box-shadow .25s ease, border-color .25s ease; border-bottom: 1px solid transparent; }
+body.scrolled .topbar { border-bottom-color: var(--line); box-shadow: 0 8px 24px rgba(15, 35, 22, .06); }
+[data-theme="dark"] body.scrolled .topbar { box-shadow: 0 8px 24px rgba(0,0,0,.22); }
+
+.btn { transition: transform .14s cubic-bezier(.22,.8,.26,1), opacity .14s ease, box-shadow .2s ease, background .2s ease; }
+.btn:active { transform: scale(.965); }
+.btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-2)); box-shadow: 0 7px 18px color-mix(in srgb, var(--primary) 24%, transparent); }
+.btn-primary:active { box-shadow: 0 3px 10px color-mix(in srgb, var(--primary) 20%, transparent); }
+.icon-btn { transition: background .16s ease, transform .16s cubic-bezier(.22,.8,.26,1); }
+.icon-btn:active { transform: scale(.9); }
+.chip, .segmented button, .setting-row, .shelf-card, .dl-card, .card { -webkit-tap-highlight-color: transparent; }
+.setting-row, .shelf-card, .dl-card { transition: background .16s ease, transform .16s ease; }
+.setting-row:active, .shelf-card:active, .dl-card:active { background: var(--surface-2); }
+.card { border-radius: 20px; }
+.section-head h2 { letter-spacing: .2px; }
+
+.tab { transition: color .18s ease, transform .18s cubic-bezier(.22,.8,.26,1), background .18s ease; }
+.tab:active { transform: scale(.93); }
+.tab::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 16px; height: 3px; border-radius: 3px; background: var(--primary); opacity: 0; transform: translateX(-50%) scaleX(.25); transition: opacity .2s ease, transform .25s cubic-bezier(.22,.8,.26,1); }
+.tab.active::after { opacity: 1; transform: translateX(-50%) scaleX(1); }
+.tab.active { background: color-mix(in srgb, var(--primary-soft) 70%, transparent); }
+.tab.active svg { animation: tabPop .32s cubic-bezier(.22,.8,.26,1); }
+.tab .badge { animation: pulseSoft 1.8s ease-in-out infinite; }
+
+.sheet { transition: transform .32s cubic-bezier(.16,1,.3,1); border: 1px solid var(--line); border-bottom: 0; }
+.scrim { transition: opacity .24s ease; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+.sheet h2 { letter-spacing: .2px; }
+.sheet .sheet-actions .btn { min-height: 46px; }
+
+.toast { animation: toastIn .22s cubic-bezier(.22,.8,.26,1); }
+.skeleton::after { animation-duration: 1.2s; }
+input:focus, select:focus, textarea:focus { border-color: color-mix(in srgb, var(--primary) 55%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+  #app.route-anim .page { animation: none !important; }
+}
