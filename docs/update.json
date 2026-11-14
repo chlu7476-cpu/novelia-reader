@@ -1,8 +1,8 @@
 {
-  "versionCode": 48,
-  "versionName": "1.5.1",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.5.1.apk",
-  "notes": "1. 阅读设置改为应用内卡片与圆角选项\n2. 引擎、动画、自动翻页、手势不再弹系统白色下拉\n3. 设置分组更紧凑，深色模式更统一",
+  "versionCode": 49,
+  "versionName": "1.5.2",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.5.2.apk",
+  "notes": "修复：阅读器「下载整本」调用原生下载服务时参数不完整，导致启动失败。",
   "size": 136217,
-  "sha256": "5c7be22fda836ac5f5c3c064b1ac38d125285026a72614523bfb7b66b0d3edc5"
+  "sha256": "a56d802422d88a6930537164287b54b03dbdd4b59757684e24bcb5d988282c33"
 }

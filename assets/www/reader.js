@@ -1010,8 +1010,12 @@
       case 'download-all':
         if (isWenku) { toast('文库已缓存，无需重复下载'); break; }
         if (native && native.download) {
-          try { native.download(provider, novel, 0); if (native.requestNotifications) native.requestNotifications(); toast('已加入下载队列'); }
-          catch (err) { toast('下载启动失败'); }
+          try {
+            const queued = native.download(provider, novel, 0, 1, 0);
+            if (!queued) throw new Error('下载服务未启动');
+            if (native.requestNotifications) native.requestNotifications();
+            toast('已加入下载队列');
+          } catch (err) { toast('下载启动失败：' + (err && err.message ? err.message : '请检查通知权限')); }
         } else toast('请在 App 内使用下载');
         break;
       case 'bookmark': toggleBookmark(); if (sheetKind === 'bookmarks') showBookmarks(); else refreshSettingsSheet(); break;
