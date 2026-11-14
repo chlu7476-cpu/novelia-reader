@@ -239,3 +239,20 @@ body.bars-hidden .reader-bottom { transform: translateY(110%); }
 .gesture-row .r-select { flex: 1; margin: 0; }
 .r-mini { font-size: 10px; padding: 5px 9px; border-radius: 7px; background: var(--r-soft); color: var(--r-muted); margin-left: 6px; }
 #reader-bg { border: 1px solid var(--r-line) !important; padding: 0; }
+
+/* ---------- reader settings redesign (1.5.1) ---------- */
+.r-sheet { background: var(--r-bg); max-height: 88vh; }
+.r-sheet .set-group { margin: 0 0 10px; padding: 11px 12px 12px; background: color-mix(in srgb, var(--r-surface) 88%, transparent); border: 1px solid var(--r-line); border-radius: 15px; }
+.r-sheet .set-group > label { margin: 0 0 9px; color: var(--r-muted); letter-spacing: 1px; }
+.choice-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.choice { padding: 8px 12px; border-radius: 9px; background: var(--r-soft); color: var(--r-muted); font-size: 11px; line-height: 1; border: 1px solid transparent; transition: background .15s ease, color .15s ease, transform .15s ease; }
+.choice:active { transform: scale(.96); }
+.choice.active { background: var(--r-accent); color: var(--r-bg); font-weight: 700; }
+.mini-label { font-size: 10px; color: var(--r-faint); margin: 10px 0 6px 1px; }
+.mini-label:first-of-type { margin-top: 2px; }
+.gesture-block { display: flex; flex-direction: column; gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--r-line); }
+.gesture-block:last-child { border-bottom: 0; padding-bottom: 0; }
+.gesture-block > span { font-size: 11px; color: var(--r-muted); }
+.r-sheet .r-actions { position: relative; margin-top: 10px; }
+.r-sheet .r-actions button { padding: 11px 8px; }
+.r-sheet .themes { gap: 7px; }

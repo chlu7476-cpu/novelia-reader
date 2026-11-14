@@ -812,9 +812,9 @@
       + modes.map(m => '<button data-set="mode" data-value="' + m[0] + '" class="' + (r.mode === m[0] ? 'active' : '') + '">' + m[1] + '</button>').join('') + '</div></div>'
       + '<div class="set-group"><label>阅读模式</label><div class="seg">'
       + [['page', '左右翻页'], ['scroll', '滚动'], ['vertical', '上下翻页']].map(m => '<button data-set="layout" data-value="' + m[0] + '" class="' + ((r.layout || 'page') === m[0] ? 'active' : '') + '">' + m[1] + '</button>').join('') + '</div></div>'
-      + '<div class="set-group"><label>译文引擎</label><select class="r-select" id="engine-select">'
-      + [['auto', '自动选择（推荐）'], ['sakura', 'Sakura'], ['gpt', 'GPT'], ['youdao', '有道'], ['baidu', '百度']].map(e => '<option value="' + e[0] + '"' + (r.engine === e[0] ? ' selected' : '') + '>' + e[1] + '</option>').join('')
-      + '</select></div>'
+      + '<div class="set-group"><label>译文引擎</label><div class="choice-row">'
+      + [['auto', '自动'], ['sakura', 'Sakura'], ['gpt', 'GPT'], ['youdao', '有道'], ['baidu', '百度']].map(e => '<button class="choice ' + (r.engine === e[0] ? 'active' : '') + '" data-set="engine" data-value="' + e[0] + '">' + e[1] + '</button>').join('')
+      + '</div></div>'
       + '<div class="set-group"><label>排版</label>'
       + '<div class="row-between"><div><b>字号</b><span><span id="fs-num">' + r.fontSize + '</span> px</span></div></div>'
       + '<input class="r-range" id="fs-range" type="range" min="15" max="28" step="1" value="' + r.fontSize + '">'
@@ -823,12 +823,11 @@
       + '<div class="row-between"><div><b>衬线字体</b><span>更接近纸书</span></div><button class="r-switch ' + (r.serif ? 'on' : '') + '" data-set="serif"></button></div>'
       + '</div>'
       + '<div class="set-group"><label>翻页与显示</label>'
-      + '<select class="r-select" id="anim-select" style="margin-bottom:8px">'
-      + [['slide', '滑动翻页'], ['fade', '淡入翻页'], ['none', '无动画']].map(a => '<option value="' + a[0] + '"' + ((r.animation || 'slide') === a[0] ? ' selected' : '') + '>' + a[1] + '</option>').join('')
-      + '</select>'
-      + '<select class="r-select" id="auto-turn" style="margin-bottom:8px">'
-      + [['0', '不自动翻页'], ['5', '每 5 秒'], ['10', '每 10 秒'], ['20', '每 20 秒'], ['30', '每 30 秒']].map(a => '<option value="' + a[0] + '"' + (String(r.autoTurn || 0) === a[0] ? ' selected' : '') + '>' + a[1] + '</option>').join('')
-      + '</select>'
+      + '<div class="mini-label">翻页动画</div><div class="choice-row">'
+      + [['slide', '滑动'], ['fade', '淡入'], ['none', '无动画']].map(a => '<button class="choice ' + ((r.animation || 'slide') === a[0] ? 'active' : '') + '" data-set="animation" data-value="' + a[0] + '">' + a[1] + '</button>').join('')
+      + '</div><div class="mini-label">自动翻页</div><div class="choice-row">'
+      + [['0', '关闭'], ['5', '5 秒'], ['10', '10 秒'], ['20', '20 秒'], ['30', '30 秒']].map(a => '<button class="choice ' + (String(r.autoTurn || 0) === a[0] ? 'active' : '') + '" data-set="autoTurn" data-value="' + a[0] + '">' + a[1] + '</button>').join('')
+      + '</div>'
       + '<div class="row-between"><div><b>亮度</b><span id="bright-num">' + (r.brightness > 0 ? Math.round(r.brightness * 100) + '%' : '跟随系统') + '</span></div></div>'
       + '<input class="r-range" id="brightness-range" type="range" min="0" max="100" step="5" value="' + (r.brightness > 0 ? Math.round(r.brightness * 100) : 0) + '">'
       + '<div class="row-between"><div><b>屏幕常亮</b><span>阅读时不清屏</span></div><button class="r-switch ' + (r.keepAwake !== false ? 'on' : '') + '" data-set="awake"></button></div>'
@@ -838,9 +837,9 @@
       + '<input id="font-file" type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf" style="display:none">'
       + '</div>'
       + '<div class="set-group"><label>手势</label>'
-      + '<div class="gesture-row"><span>点左侧</span><select id="gesture-left" class="r-select">' + [['prev','上一页'],['next','下一页'],['menu','呼出菜单'],['toc','目录'],['settings','设置']].map(x => '<option value="' + x[0] + '"' + ((r.tapLeft || 'prev') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></div>'
-      + '<div class="gesture-row"><span>点中间</span><select id="gesture-center" class="r-select">' + [['menu','呼出菜单'],['prev','上一页'],['next','下一页'],['toc','目录'],['settings','设置']].map(x => '<option value="' + x[0] + '"' + ((r.tapCenter || 'menu') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></div>'
-      + '<div class="gesture-row"><span>点右侧</span><select id="gesture-right" class="r-select">' + [['next','下一页'],['prev','上一页'],['menu','呼出菜单'],['toc','目录'],['settings','设置']].map(x => '<option value="' + x[0] + '"' + ((r.tapRight || 'next') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></div>'
+      + '<div class="gesture-block"><span>点左侧</span><div class="choice-row">' + [['prev','上一页'],['next','下一页'],['menu','菜单'],['toc','目录'],['settings','设置']].map(x => '<button class="choice ' + ((r.tapLeft || 'prev') === x[0] ? 'active' : '') + '" data-set="tapLeft" data-value="' + x[0] + '">' + x[1] + '</button>').join('') + '</div></div>'
+      + '<div class="gesture-block"><span>点中间</span><div class="choice-row">' + [['menu','菜单'],['prev','上一页'],['next','下一页'],['toc','目录'],['settings','设置']].map(x => '<button class="choice ' + ((r.tapCenter || 'menu') === x[0] ? 'active' : '') + '" data-set="tapCenter" data-value="' + x[0] + '">' + x[1] + '</button>').join('') + '</div></div>'
+      + '<div class="gesture-block"><span>点右侧</span><div class="choice-row">' + [['next','下一页'],['prev','上一页'],['menu','菜单'],['toc','目录'],['settings','设置']].map(x => '<button class="choice ' + ((r.tapRight || 'next') === x[0] ? 'active' : '') + '" data-set="tapRight" data-value="' + x[0] + '">' + x[1] + '</button>').join('') + '</div></div>'
       + '</div>'
       + '<div class="set-group"><label>纸张</label><div class="themes">'
       + themes.map(t => '<button class="theme-btn th-' + t[0] + (r.theme === t[0] ? ' active' : '') + '" data-set="theme" data-value="' + t[0] + '"><i></i>' + t[1] + '</button>').join('')
@@ -980,6 +979,14 @@
         settings.reader.mode = val; saveSettings(); engine = pickEngine(chapter || {}); render(); refreshSettingsSheet();
       } else if (keySet === 'layout') {
         settings.reader.layout = val; saveSettings(); relayout(); refreshSettingsSheet();
+      } else if (keySet === 'engine') {
+        settings.reader.engine = val; saveSettings(); engine = pickEngine(chapter || {}); render(); refreshSettingsSheet();
+      } else if (keySet === 'animation') {
+        settings.reader.animation = val; saveSettings(); refreshSettingsSheet();
+      } else if (keySet === 'autoTurn') {
+        settings.reader.autoTurn = parseInt(val, 10) || 0; saveSettings(); scheduleAutoTurn(); refreshSettingsSheet();
+      } else if (keySet === 'tapLeft' || keySet === 'tapCenter' || keySet === 'tapRight') {
+        settings.reader[keySet] = val; saveSettings(); refreshSettingsSheet();
       } else if (keySet === 'theme') {
         settings.reader.theme = val; saveSettings(); applyStyle(); refreshSettingsSheet();
       } else if (keySet === 'serif') {

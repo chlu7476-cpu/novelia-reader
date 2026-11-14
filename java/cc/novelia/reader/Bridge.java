@@ -390,7 +390,7 @@ final class Bridge {
 
     @JavascriptInterface
     public String version() {
-        return "1.5.0";
+        return "1.5.1";
     }
 
     @JavascriptInterface
