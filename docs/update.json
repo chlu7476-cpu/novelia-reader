@@ -1,10 +1,10 @@
 {
-  "versionCode": 73,
-  "versionName": "1.7.7",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.7.apk",
-  "notes": "更新/公告优先使用 GitHub Pages；服务器不可达时自动回退。",
+  "versionCode": 74,
+  "versionName": "1.7.8",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.8.apk",
+  "notes": "修复书详情讨论区加载失败。",
   "size": 156697,
-  "sha256": "74d7d56662fa57d1a604dc6c3f1fd08e33d6dcdd18925f1382073a027909d1c4",
+  "sha256": "d988d9af4e0f1218d4e3c2d760d204ff5321aac01d2faa19c41ea5900925c3ed",
   "minVersionCode": 0,
   "force": false,
   "notice": {

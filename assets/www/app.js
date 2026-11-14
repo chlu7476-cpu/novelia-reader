@@ -571,7 +571,7 @@
       });
     } catch (e) {}
   }
-  async function forumApi(method, path, body) {
+  async function nativeForumApi(method, path, body) {
     const raw = await invokeLong('forumRequest', method, path, body || '', forumToken());
     try { return JSON.parse(raw || '{}'); } catch (e) { throw new Error('论坛返回格式异常'); }
   }
@@ -593,7 +593,7 @@
     try {
       const path = 'post/?page=' + ((page || 0) + 1) + '&page_size=20&category=' + FORUM_CATEGORY
         + '&q=' + encodeURIComponent(f.q || '') + '&sort=' + encodeURIComponent(f.sort || 'active');
-      const data = await forumApi('GET', path, '');
+      const data = await nativeForumApi('GET', path, '');
       f.items = (page === 0 ? [] : f.items).concat(Array.isArray(data.items) ? data.items : []);
       f.total = Number(data.total) || f.items.length;
       f.page = page || 0;
@@ -663,10 +663,10 @@
     f.postLoading = true; f.post = null; f.comments = []; f.error = '';
     if (state.route.name === 'forum' && state.route.seg[1]) render();
     try {
-      const post = await forumApi('GET', 'post/' + encodeURIComponent(id) + '/', '');
+      const post = await nativeForumApi('GET', 'post/' + encodeURIComponent(id) + '/', '');
       f.post = post;
       try {
-        const c = await forumApi('GET', 'post/' + encodeURIComponent(id) + '/comment?page=1&page_size=30', '');
+        const c = await nativeForumApi('GET', 'post/' + encodeURIComponent(id) + '/comment?page=1&page_size=30', '');
         f.comments = Array.isArray(c.items) ? c.items : [];
       } catch (e) { f.comments = []; }
     } catch (e) { f.error = e.message || '帖子加载失败'; }
@@ -761,7 +761,7 @@
     if (title.length < 2) { toast('标题至少 2 个字'); return; }
     if (content.length < 2) { toast('正文至少 2 个字'); return; }
     try {
-      const p = await forumApi('POST', 'post/', JSON.stringify({ categoryId: 100, title, content, tagIds: [] }));
+      const p = await nativeForumApi('POST', 'post/', JSON.stringify({ categoryId: 100, title, content, tagIds: [] }));
       closeSheet(); toast('已发布');
       state.forum.started = false;
       navigate('#/forum/' + p.id);
@@ -773,7 +773,7 @@
     if (text.length < 2) { toast('评论至少 2 个字'); return; }
     if (!state.forum.post) return;
     try {
-      await forumApi('POST', 'post/' + state.forum.post.id + '/comment', JSON.stringify({ content: text }));
+      await nativeForumApi('POST', 'post/' + state.forum.post.id + '/comment', JSON.stringify({ content: text }));
       toast('评论已发送');
       loadForumPost(state.forum.post.id);
     } catch (e) { toast(e.message || '评论失败'); }
@@ -2447,7 +2447,7 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.7.7', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.7.8', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
@@ -2458,7 +2458,7 @@
       + '<div class="si">' + icon('wifi') + '</div><div class="st"><b>在线人数</b><span id="online-count">点击刷新</span></div>'
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
-      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.7.7', '1.5.0')) + '</span></div>'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.7.8', '1.5.0')) + '</span></div>'
       + '<div class="sv">' + icon('right') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="open-feedback">'
       + '<div class="si">' + icon('edit') + '</div><div class="st"><b>问题反馈</b><span>Bug、建议、内容问题，直接发送到服务器</span></div>'
