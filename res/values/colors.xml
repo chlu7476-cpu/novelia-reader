@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand_deep">#123D2B</color>
+    <color name="brand">#1F7A4D</color>
+    <color name="paper">#F5F7F4</color>
+    <color name="icon_bg">#123D2B</color>
+</resources>

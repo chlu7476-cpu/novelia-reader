@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN" data-reader-theme="paper">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#fbfaf6">
+  <meta name="color-scheme" content="light dark">
+  <title>阅读 · Novelia</title>
+  <link rel="stylesheet" href="reader.css">
+</head>
+<body>
+  <div class="read-progress"><i id="read-progress"></i></div>
+  <header class="reader-top" id="reader-top">
+    <button class="r-icon" data-act="back" aria-label="返回">
+      <svg viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg>
+    </button>
+    <div class="reader-heading">
+      <b id="book-title">Novelia</b>
+      <span id="chapter-title">正在加载…</span>
+    </div>
+    <button class="r-icon" data-act="toc" aria-label="目录">
+      <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.1M3.5 12h.1M3.5 18h.1"/></svg>
+    </button>
+    <button class="r-icon" data-act="bookmark" aria-label="书签">
+      <svg viewBox="0 0 24 24"><path d="M6.5 3h11A1.5 1.5 0 0 1 19 4.5V21l-7-4.4L5 21V4.5A1.5 1.5 0 0 1 6.5 3Z"/></svg>
+    </button>
+    <button class="r-icon" data-act="speak" aria-label="朗读">
+      <svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+    </button>
+    <button class="r-icon" data-act="settings" aria-label="阅读设置">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2.2"/><circle cx="15" cy="17" r="2.2"/></svg>
+    </button>
+  </header>
+
+  <main class="reader-content" id="content">
+    <div class="r-loading"><span></span><p>正在取出这一章…</p></div>
+  </main>
+
+  <footer class="reader-bottom" id="reader-bottom">
+    <button class="r-nav" data-act="prev" id="prev-btn"><span>上一章</span><small id="prev-label"></small></button>
+    <div class="r-meter"><b id="pct-label">0%</b><span id="idx-label">— / —</span></div>
+    <button class="r-nav next" data-act="next" id="next-btn"><span>下一章</span><small id="next-label"></small></button>
+  </footer>
+
+  <div class="r-scrim" id="r-scrim"></div>
+  <div class="r-sheet" id="r-sheet"></div>
+  <div class="r-toast" id="r-toast"></div>
+
+  <script src="reader.js"></script>
+</body>
+</html>

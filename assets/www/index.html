@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#f5f7f4">
+  <meta name="color-scheme" content="light dark">
+  <title>Novelia 阅读</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    #boot { position: fixed; inset: 0; z-index: 99; background: #123d2b; color: #fbf6e9;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+      transition: opacity .35s ease; }
+    #boot .bmark { width: 68px; height: 68px; border-radius: 22px; background: rgba(251,246,233,.12);
+      border: 1px solid rgba(251,246,233,.18); display: grid; place-items: center;
+      font-size: 32px; font-weight: 800; letter-spacing: -2px; }
+    #boot .btitle { font-size: 17px; letter-spacing: 5px; opacity: .9; }
+    #boot .bsub { font-size: 10.5px; letter-spacing: 1.5px; opacity: .45; margin-top: -10px; }
+    #boot .bline { width: 44px; height: 2px; background: rgba(251,246,233,.16); overflow: hidden; border-radius: 2px; }
+    #boot .bline i { display: block; width: 40%; height: 100%; background: #d8ab62; animation: bl 1s ease infinite; }
+    @keyframes bl { 0% { transform: translateX(-110%); } 100% { transform: translateX(260%); } }
+    #boot.out { opacity: 0; pointer-events: none; }
+  </style>
+  <script>
+    (function () {
+      function showBootError(msg) {
+        var b = document.getElementById('boot');
+        if (!b) return;
+        var d = document.createElement('div');
+        d.style.cssText = 'position:fixed;left:16px;right:16px;bottom:28px;z-index:100;padding:10px 12px;border-radius:10px;background:#7a2e2e;color:#fff;font:12px/1.5 system-ui,sans-serif;word-break:break-all';
+        d.textContent = '启动异常：' + msg + (msg.indexOf('\n') < 0 ? '' : '');
+        document.body.appendChild(d);
+      }
+      window.addEventListener('error', function (e) {
+        if (e.target && e.target !== window) return;
+        showBootError((e.message || '脚本加载失败') + ' @ ' + (e.filename || '') + ':' + (e.lineno || 0) + ':' + (e.colno || 0));
+      }, true);
+      window.addEventListener('unhandledrejection', function (e) {
+        showBootError((e.reason && e.reason.message) || String(e.reason || '异步错误'));
+      });
+      setTimeout(function () {
+        var b = document.getElementById('boot');
+        if (b && !b.classList.contains('out')) { b.classList.add('out'); setTimeout(function () { b.remove(); }, 500); }
+      }, 6000);
+    })();
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="overlay"></div>
+  <div id="toast" class="toast"></div>
+  <div id="boot">
+    <div class="bmark">N</div>
+    <div class="btitle">NOVELIA</div>
+    <div class="bsub">轻小说机翻阅读器</div>
+    <div class="bline"><i></i></div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
