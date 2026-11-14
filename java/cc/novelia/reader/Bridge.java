@@ -175,8 +175,13 @@ final class Bridge {
     }
 
     @JavascriptInterface
+    public void requestTurnstile(String id, String app) {
+        activity.startTurnstile(id, app);
+    }
+
+    @JavascriptInterface
     public void requestTurnstile(String id) {
-        activity.startTurnstile(id);
+        requestTurnstile(id, "f");
     }
 
     @JavascriptInterface
@@ -193,6 +198,22 @@ final class Bridge {
             try { deliver(id, 200, ForumClient.register(activity, username, password, email, otp)); }
             catch (Exception e) { deliver(id, 0, e.getMessage() == null ? "注册失败" : e.getMessage()); }
         }).start();
+    }
+
+    @JavascriptInterface
+    public void authOtp(String id, String email, String token) {
+        pool.execute(() -> {
+            try { deliver(id, 200, ApiClient.requestOtp(activity, email, token)); }
+            catch (Exception e) { deliver(id, 0, e.getMessage() == null ? "验证码发送失败" : e.getMessage()); }
+        });
+    }
+
+    @JavascriptInterface
+    public void authRegister(String id, String username, String password, String email, String otp) {
+        pool.execute(() -> {
+            try { deliver(id, 200, ApiClient.register(activity, username, password, email, otp).toString()); }
+            catch (Exception e) { deliver(id, 0, e.getMessage() == null ? "注册失败" : e.getMessage()); }
+        });
     }
 
     @JavascriptInterface
@@ -479,7 +500,7 @@ final class Bridge {
 
     @JavascriptInterface
     public String version() {
-        return "1.7.1";
+        return "1.7.2";
     }
 
     @JavascriptInterface

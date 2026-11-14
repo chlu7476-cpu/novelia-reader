@@ -39,7 +39,9 @@ public class TurnstileActivity extends Activity {
         super.onCreate(savedInstanceState);
         buildUi();
         configure();
-        webView.loadUrl("https://auth.novelia.cc/register?app=f&theme=dark");
+        String app = getIntent().getStringExtra("app");
+        if (app == null || app.isEmpty()) app = "f";
+        webView.loadUrl("https://auth.novelia.cc/register?app=" + app + "&theme=dark");
         handler.postDelayed(poll, 1200);
     }
 

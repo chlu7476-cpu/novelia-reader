@@ -205,6 +205,73 @@ final class ApiClient {
         }
     }
 
+    static String requestOtp(Context ctx, String email, String turnstile) throws Exception {
+        if (email == null || !email.contains("@")) throw new IOException("请填写有效邮箱");
+        if (turnstile == null || turnstile.isEmpty() || turnstile.length() > 2048) throw new IOException("请先完成人机验证");
+        JSONObject payload = new JSONObject();
+        payload.put("app", "n");
+        payload.put("email", email.trim());
+        payload.put("type", "verify");
+        payload.put("turnstileToken", turnstile);
+        return postAuth(ctx, "https://auth.novelia.cc/api/v1/auth/otp/request", payload);
+    }
+
+    static JSONObject register(Context ctx, String username, String password, String email, String otp) throws Exception {
+        if (username == null || username.trim().length() < 2 || username.trim().length() > 16) throw new IOException("用户名应为 2–16 个字符");
+        if (password == null || password.length() < 8) throw new IOException("密码至少 8 个字符");
+        if (email == null || !email.contains("@")) throw new IOException("请填写有效邮箱");
+        if (otp == null || !otp.trim().matches("[0-9]{6}")) throw new IOException("验证码应为 6 位数字");
+        JSONObject payload = new JSONObject();
+        payload.put("app", "n");
+        payload.put("username", username.trim());
+        payload.put("password", password);
+        payload.put("email", email.trim());
+        payload.put("otp", otp.trim());
+        String body = postAuth(ctx, "https://auth.novelia.cc/api/v1/auth/register", payload);
+        String token = body == null ? "" : body.trim();
+        if (token.startsWith("\"") && token.endsWith("\"") && token.length() > 2) token = token.substring(1, token.length() - 1);
+        if (token.isEmpty()) throw new IOException("注册成功但没有返回登录令牌");
+        JSONObject info;
+        try { info = jwtPayload(token); } catch (Exception e) { throw new IOException("登录令牌格式异常"); }
+        String user = info.optString("sub", username.trim());
+        ctx.getSharedPreferences(AUTH_PREFS, Context.MODE_PRIVATE).edit()
+                .putString("token", token).putString("user", user)
+                .putLong("savedAt", System.currentTimeMillis()).apply();
+        JSONObject result = authInfo(ctx);
+        result.put("ok", true);
+        return result;
+    }
+
+    private static String postAuth(Context ctx, String urlText, JSONObject payload) throws IOException {
+        HttpURLConnection conn = null;
+        try {
+            byte[] bytes = payload.toString().getBytes(StandardCharsets.UTF_8);
+            URL url = new URL(urlText);
+            conn = (HttpURLConnection) url.openConnection(proxy(ctx));
+            conn.setConnectTimeout(CONNECT_TIMEOUT);
+            conn.setReadTimeout(READ_TIMEOUT);
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setFixedLengthStreamingMode(bytes.length);
+            conn.setRequestProperty("User-Agent", UA);
+            conn.setRequestProperty("Accept", "application/json,text/plain,*/*");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Origin", "https://books.fishhawk.top");
+            OutputStream out = conn.getOutputStream();
+            out.write(bytes); out.close();
+            int code = conn.getResponseCode();
+            InputStream raw = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            String body = readAll(raw, conn.getContentEncoding());
+            if (code < 200 || code >= 300) {
+                String msg = body == null ? "" : body.trim();
+                if (msg.length() > 300) msg = msg.substring(0, 300);
+                if (msg.isEmpty()) msg = "请求失败（" + code + "）";
+                throw new ApiException(code, msg);
+            }
+            return body == null ? "" : body.trim();
+        } finally { if (conn != null) conn.disconnect(); }
+    }
+
     static byte[] getBytes(Context ctx, String path) throws IOException {
         String urlText = path.startsWith("http://") || path.startsWith("https://")
                 ? path : activeBase + (path.startsWith("/") ? path.substring(1) : path);

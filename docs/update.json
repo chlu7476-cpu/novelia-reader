@@ -1,10 +1,10 @@
 {
-  "versionCode": 67,
-  "versionName": "1.7.1",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.1.apk",
-  "notes": "1. 首页改为四个快捷模块\n2. 「我的」按常用/网络/社区/存储/关于切换\n3. 减少重复入口和长列表",
+  "versionCode": 68,
+  "versionName": "1.7.2",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.2.apk",
+  "notes": "1. 原站账号登录页新增注册入口\n2. 用户名、邮箱、密码、验证码\n3. 注册成功后自动登录\n4. 公共账号不再跳网页版",
   "size": 156697,
-  "sha256": "9ac833d8b4882349c75a7b6299a23e175067b73f165911976e8bd1cfec61ac90",
+  "sha256": "db2f963718d656b2d7d4651d88f6b9fb6dd6a3de530eb71671ec908fb0adedfb",
   "minVersionCode": 0,
   "force": false,
   "notice": {

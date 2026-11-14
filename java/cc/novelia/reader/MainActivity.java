@@ -345,10 +345,12 @@ public class MainActivity extends Activity {
         }
     }
 
-    void startTurnstile(String id) {
+    void startTurnstile(String id, String app) {
         pendingTurnstileId = id;
         try {
-            startActivityForResult(new Intent(this, TurnstileActivity.class), REQ_TURNSTILE);
+            Intent intent = new Intent(this, TurnstileActivity.class);
+            intent.putExtra("app", app == null || app.isEmpty() ? "f" : app);
+            startActivityForResult(intent, REQ_TURNSTILE);
         } catch (Exception e) {
             pendingTurnstileId = null;
             if (bridge != null) bridge.deliver(id, 0, "无法打开人机验证");

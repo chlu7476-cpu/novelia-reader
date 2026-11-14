@@ -2120,6 +2120,49 @@
       + '<div class="sheet-actions"><button class="btn btn-ghost" data-action="close-sheet">取消</button>'
       + '<button class="btn btn-primary" data-action="confirm-r18">确认开启</button></div>');
   }
+  function showAuthRegisterSheet() {
+    showSheet('<h2>注册原站账号</h2>'
+      + '<p class="sheet-sub">注册成功后会自动登录。需要邮箱验证码和人机验证；R18 权限仍由原站服务端决定。</p>'
+      + '<div class="feedback-form"><label>用户名（2–16 个字符）<input id="auth-reg-user" autocomplete="username" maxlength="16"></label>'
+      + '<label>邮箱<input id="auth-reg-email" type="email" autocomplete="email" maxlength="120"></label>'
+      + '<label>密码（至少 8 个字符）<input id="auth-reg-pass" type="password" autocomplete="new-password" maxlength="100"></label>'
+      + '<label>邮箱验证码（6 位数字）<input id="auth-reg-otp" inputmode="numeric" maxlength="6" placeholder="6 位数字"></label></div>'
+      + '<div class="sheet-actions"><button class="btn btn-primary btn-block" data-action="auth-do-register">注册并登录</button>'
+      + '<button class="btn btn-ghost btn-block" data-action="auth-send-otp">发送邮箱验证码</button>'
+      + '<button class="btn btn-ghost btn-block" data-action="open-login">已有账号，去登录</button>'
+      + '<button class="btn btn-ghost btn-block" data-action="close-sheet">取消</button></div>');
+  }
+  async function authSendOtp() {
+    const el = $('#auth-reg-email');
+    const email = el ? el.value.trim() : '';
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('请填写有效邮箱'); return; }
+    toast('请先完成人机验证…');
+    try {
+      const token = (await invokeLong('requestTurnstile', 'n')).trim();
+      if (!token) throw new Error('人机验证未完成');
+      await invokeLong('authOtp', email, token);
+      toast('验证码已发送，请查收邮箱');
+    } catch (e) { toast(e.message || '验证码发送失败'); }
+  }
+  async function authRegister() {
+    const uEl = $('#auth-reg-user'), eEl = $('#auth-reg-email'), pEl = $('#auth-reg-pass'), oEl = $('#auth-reg-otp');
+    const username = uEl ? uEl.value.trim() : '', email = eEl ? eEl.value.trim() : '';
+    const password = pEl ? pEl.value : '', otp = oEl ? oEl.value.trim() : '';
+    if (username.length < 2) { toast('用户名至少 2 个字符'); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('请填写有效邮箱'); return; }
+    if (password.length < 8) { toast('密码至少 8 个字符'); return; }
+    if (!/^\d{6}$/.test(otp)) { toast('验证码应为 6 位数字'); return; }
+    try {
+      const raw = await invokeLong('authRegister', username, password, email, otp);
+      let info = {}; try { info = JSON.parse(raw); } catch (e) {}
+      state.auth = info;
+      const pending = state.pendingR18;
+      state.pendingR18 = false;
+      closeSheet();
+      if (pending && state.auth.loggedIn) { saveR18(true); toast('注册成功，已登录并开启 R18'); reloadR18(); }
+      else { toast(state.auth.loggedIn ? '注册成功，已自动登录' : '注册成功，请登录'); render(); }
+    } catch (e) { toast(e.message || '注册失败'); }
+  }
   function showLoginSheet() {
     loadAuth();
     const a = state.auth;
@@ -2136,7 +2179,7 @@
       + '<div class="field" style="margin-top:8px"><label>密码</label><input id="login-pass" type="password" autocomplete="current-password" placeholder="密码"></div>'
       + '<div class="sheet-actions"><button class="btn btn-ghost" data-action="close-sheet">取消</button>'
       + '<button class="btn btn-primary" id="login-btn" data-action="login-submit">登录</button></div>'
-      + '<div class="note" style="text-align:center">没有账号？<button data-action="login-web" style="color:var(--primary)">去网页版注册 / 找回密码</button></div>');
+      + '<div class="note" style="text-align:center">没有账号？<button data-action="open-auth-register" style="color:var(--primary)">注册原站账号</button></div>');
   }
   function loadProxy() {
     if (native && typeof native.proxyGet === 'function') {
@@ -2378,7 +2421,7 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.7.1', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.7.2', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
@@ -2389,7 +2432,7 @@
       + '<div class="si">' + icon('wifi') + '</div><div class="st"><b>在线人数</b><span id="online-count">点击刷新</span></div>'
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
-      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.7.1', '1.5.0')) + '</span></div>'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.7.2', '1.5.0')) + '</span></div>'
       + '<div class="sv">' + icon('right') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="open-feedback">'
       + '<div class="si">' + icon('edit') + '</div><div class="st"><b>问题反馈</b><span>Bug、建议、内容问题，直接发送到服务器</span></div>'
@@ -3286,6 +3329,15 @@
         break;
       case 'import-backup':
         importBackup();
+        break;
+      case 'open-auth-register':
+        showAuthRegisterSheet();
+        break;
+      case 'auth-send-otp':
+        authSendOtp();
+        break;
+      case 'auth-do-register':
+        authRegister();
         break;
       case 'login-submit': {
         const user = (($('#login-user') || {}).value || '').trim();
