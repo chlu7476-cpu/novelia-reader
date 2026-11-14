@@ -1,10 +1,10 @@
 {
-  "versionCode": 63,
-  "versionName": "1.6.7",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.6.7.apk",
-  "notes": "1. 论坛改为原生页面，不再内嵌网页\n2. 帖子列表、详情、评论、登录、发帖、回复\n3. 首页和「我的 → 社区」进入",
+  "versionCode": 64,
+  "versionName": "1.6.8",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.6.8.apk",
+  "notes": "1. 问题反馈不再跳转 GitHub\n2. 反馈直接发送到服务器后台\n3. 保留复制反馈内容",
   "size": 148505,
-  "sha256": "f857a660d0ff9fe424c538c357e24667f4e635db338e7975e95d24a5bebcc9a6",
+  "sha256": "fc75922cb7ddb70a0e31b8bb37088fac24200194d1e3abc299091735e358f466",
   "minVersionCode": 0,
   "force": false,
   "notice": {
