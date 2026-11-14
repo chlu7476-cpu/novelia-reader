@@ -1,0 +1,8 @@
+{
+  "versionCode": 43,
+  "versionName": "1.4.28",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.4.28.apk",
+  "notes": "1. 评论支持页码翻页、上一页/下一页和输入页码跳转\n2. 新增应用内检查更新，下载后直接调起系统安装器\n3. 优化阅读与下载稳定性",
+  "size": 119833,
+  "sha256": "50c989bb6f79aad83c6e51ac08166d350fadc7ed32c39a5870fbae64c11c2a94"
+}
