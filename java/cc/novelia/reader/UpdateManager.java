@@ -53,6 +53,8 @@ final class UpdateManager {
         out.put("notes", notes);
         out.put("sha256", sha);
         out.put("size", size);
+        org.json.JSONObject notice = remote.optJSONObject("notice");
+        if (notice != null) out.put("notice", notice);
         return out;
     }
 

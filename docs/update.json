@@ -1,8 +1,14 @@
 {
-  "versionCode": 56,
-  "versionName": "1.6.0",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.6.0.apk",
-  "notes": "1. 书架新增导入本地书：EPUB / TXT / SRT，可多选\n2. 本地书直接进入书架并支持阅读、进度和统计\n3. 保留简洁模式、下载页多选导出",
+  "versionCode": 57,
+  "versionName": "1.6.1",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.6.1.apk",
+  "notes": "1. 新增服务端网络公告\n2. 需要自备可用的网络工具/VPN 才能访问原站\n3. 保留本地导入、简洁模式和多选导出",
   "size": 144409,
-  "sha256": "93a95e1c4971ec0937b226d5d58c2dd66bee4234f384661ff9ab37a6bb96b51e"
+  "sha256": "73271ec5352fe21fba6a38677eadf81b4db1ded6900a228606d9e569a3ae3ab6",
+  "notice": {
+    "id": "vpn-required-2026-11",
+    "title": "网络访问提示",
+    "message": "本软件需要连接原站和论坛。部分网络环境下，需要自备可用的网络工具/VPN 才能加载内容。\n\n应用不提供 VPN 或网络接入服务；请遵守当地法律法规，并尊重原站条款。",
+    "button": "我知道了"
+  }
 }
