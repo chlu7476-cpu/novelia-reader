@@ -17,7 +17,7 @@
   function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function loadSettings() {
     const raw = loadJSON('nr.settings', {}) || {};
-    return { theme: raw.theme || 'auto', reader: Object.assign({}, DEFAULT_SETTINGS.reader, raw.reader || {}) };
+    return { theme: raw.theme || 'auto', simpleMode: !!raw.simpleMode, reader: Object.assign({}, DEFAULT_SETTINGS.reader, raw.reader || {}) };
   }
   let settings = loadSettings();
   function saveSettings() { saveJSON('nr.settings', settings); }
@@ -865,8 +865,7 @@
       + '<div class="r-actions"><button data-act="bookmark">' + (isBookmarked() ? '移除书签' : '添加书签') + '</button>'
       + '<button data-act="bookmarks">书签列表</button><button data-act="speak">' + (speaking ? '停止朗读' : '朗读本章') + '</button></div>'
       + '<div class="r-actions"><button data-act="search-chapter">章节内搜索</button><button data-act="copy-chapter">复制本章</button></div>'
-      + '<div class="r-actions"><button data-act="download-all">下载整本</button><button data-act="export-book">导出书籍</button></div>'
-      + '<div class="r-actions"><button data-act="share">分享作品</button></div>'
+      + '<div class="r-actions"><button data-act="download-all">下载整本</button><button data-act="share">分享作品</button></div>' 
       + '<div class="r-actions" style="margin-top:8px"><button class="primary" data-act="close-sheet">完成</button></div>';
   }
   function openSettings() {
@@ -883,6 +882,7 @@
   function applyStyle() {
     const r = settings.reader;
     document.documentElement.dataset.readerTheme = r.theme;
+    document.body.classList.toggle('simple-mode', !!settings.simpleMode);
     document.documentElement.style.setProperty('--r-size', r.fontSize + 'px');
     document.documentElement.style.setProperty('--r-lh', String(r.lineHeight));
     let font = r.serif ? 'var(--r-serif)' : '-apple-system, BlinkMacSystemFont, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif';

@@ -802,3 +802,37 @@ input:focus, select:focus, textarea:focus { border-color: color-mix(in srgb, var
 .annual-top span { display: block; font-size: 10px; color: var(--faint); }
 .annual-top b { display: block; font-size: 15px; margin: 2px 0; }
 .empty.small { padding: 24px 0; text-align: center; font-size: 11px; color: var(--faint); }
+
+/* ---------- downloads multi-select (1.5.7) ---------- */
+.dl-card { position: relative; }
+.dl-card.selected { border-color: color-mix(in srgb, var(--primary) 48%, var(--line)); background: color-mix(in srgb, var(--primary-soft) 45%, var(--surface)); }
+.dl-check { position: absolute; left: 10px; top: 10px; z-index: 3; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--line-strong); background: var(--surface); color: #fff; display: grid; place-items: center; }
+.dl-check.on { background: var(--primary); border-color: var(--primary); }
+.dl-check svg { width: 14px; height: 14px; }
+.dl-bulk { position: sticky; top: calc(58px + var(--sat)); z-index: 20; display: flex; align-items: center; gap: 14px; background: var(--ink, #143b28); color: #fff; border-radius: 13px; padding: 9px 12px; margin: 0 0 10px; font-size: 11.5px; }
+.dl-bulk span { flex: 1; }
+.dl-bulk button { color: #fff; font-size: 11px; white-space: nowrap; }
+.dl-bulk button.primary { background: var(--primary); color: #fff; padding: 6px 11px; border-radius: 8px; font-weight: 700; }
+
+/* ---------- simple mode (1.5.8) ---------- */
+body.simple-mode { --shadow: none; --shadow-soft: none; --radius: 12px; }
+body.simple-mode .hero { display: none; }
+body.simple-mode .card,
+body.simple-mode .setting-card,
+body.simple-mode .shelf-card,
+body.simple-mode .dl-card,
+body.simple-mode .update-strip,
+body.simple-mode .stat-card,
+body.simple-mode .stats-hero > div { box-shadow: none; border-radius: 12px; }
+body.simple-mode .topbar,
+body.simple-mode .tabbar { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--bg); }
+body.simple-mode .section-head { margin-top: 10px; }
+body.simple-mode .shelf-card,
+body.simple-mode .dl-card { padding: 10px 11px; }
+body.simple-mode .setting-row { padding-top: 10px; padding-bottom: 10px; }
+body.simple-mode .update-strip { background: var(--surface); }
+body.simple-mode .stats-hero { gap: 6px; }
+body.simple-mode .stats-hero > div { padding: 11px; }
+body.simple-mode #app.route-anim .page,
+body.simple-mode #app.route-anim .page > * { animation: none !important; }
+body.simple-mode .tab.active { background: transparent; }

@@ -70,6 +70,7 @@
       autoSubscribe: raw.autoSubscribe !== false,
       autoCheckShelf: raw.autoCheckShelf !== false,
       autoDownloadNew: !!raw.autoDownloadNew,
+      simpleMode: !!raw.simpleMode,
       reader: Object.assign({}, DEFAULT_SETTINGS.reader, raw.reader || {})
     };
   }
@@ -211,6 +212,29 @@
     });
   }
 
+  function invokeLong(method) {
+    const args = Array.prototype.slice.call(arguments, 1);
+    return new Promise((resolve, reject) => {
+      if (!native || typeof native[method] !== 'function') {
+        reject(new ApiError(0, '请在 Novelia 阅读 App 内使用'));
+        return;
+      }
+      const id = 'l' + (++callSeq);
+      const timer = setTimeout(() => {
+        pendingCalls.delete(id);
+        reject(new ApiError(0, '操作超时'));
+      }, 300000);
+      pendingCalls.set(id, { resolve, reject, timer });
+      try {
+        native[method].apply(native, [id].concat(args));
+      } catch (e) {
+        clearTimeout(timer);
+        pendingCalls.delete(id);
+        reject(new ApiError(0, e.message || '调用失败'));
+      }
+    });
+  }
+
   window.NativeBridge = {
     resolve(id, status, body) {
       const p = pendingCalls.get(id);
@@ -300,6 +324,8 @@
     shelfFilter: { q: '', status: 'all', cat: 'all', tag: 'all', sort: 'recent' },
     shelfManage: false,
     shelfSelected: new Set(),
+    dlManage: false,
+    dlSelected: new Set(),
     subChecking: false,
     statsYear: new Date().getFullYear(),
     sheet: null,
@@ -405,6 +431,7 @@
     const dark = settings.theme === 'dark' ||
       (settings.theme === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    document.body.classList.toggle('simple-mode', !!settings.simpleMode);
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', dark ? '#0f1511' : '#f5f7f4');
     if (native && typeof native.setDark === 'function') {
@@ -1666,11 +1693,35 @@
   function stopDownloadPoll() {
     if (dlTimer) { clearInterval(dlTimer); dlTimer = null; }
   }
+  function showDownloadExportSheet() {
+    const count = state.dlSelected.size;
+    if (!count) { toast('先选择要导出的书'); return; }
+    showSheet('<h2>导出 ' + count + ' 本</h2><p class="sheet-sub">选择格式后，再选择保存文件夹；只导出已下载章节。</p>'
+      + '<div class="opt-list">'
+      + '<button class="opt" data-action="export-selected-format" data-format="txt"><div class="radio"></div><div><b>TXT 纯文本</b><span>每本一个 .txt 文件</span></div></button>'
+      + '<button class="opt" data-action="export-selected-format" data-format="epub"><div class="radio"></div><div><b>EPUB 电子书</b><span>每本一个 .epub 文件</span></div></button>'
+      + '</div><div class="sheet-actions"><button class="btn btn-ghost" data-action="close-sheet">取消</button></div>');
+  }
+  async function exportSelected(format) {
+    const items = state.downloads.filter(x => state.dlSelected.has(x.key)).map(x => ({ provider: x.providerId, novel: x.novelId, key: x.key, title: x.titleZh || x.titleJp }));
+    if (!items.length) { toast('先选择要导出的书'); return; }
+    closeSheet();
+    toast('正在生成 ' + items.length + ' 本…');
+    try {
+      const res = await invokeLong('exportBooks', JSON.stringify(items), format);
+      const m = String(res || '').match(/saved:(\d+)/);
+      toast(m ? ('已导出 ' + m[1] + ' 本') : '已导出');
+    } catch (e) {
+      toast(e.message || '导出失败');
+    }
+  }
   function downloadsView() {
     const running = state.downloads.filter(d => d.status === 'downloading').length;
     const content = topbar({ logo: true, brand: true, actions: '<button class="icon-btn" data-action="go-search">' + icon('search') + '</button>' })
       + '<div class="section-head"><h2>下载 <span class="sub">' + (running ? running + ' 个进行中' : '离线缓存') + '</span></h2>'
+      + '<button class="link" data-action="dl-manage-toggle">' + (state.dlManage ? '完成' : '管理') + '</button>'
       + '<button class="link" data-action="refresh-downloads">' + icon('refresh') + ' 刷新</button></div>'
+      + (state.dlManage && state.downloads.length ? '<div class="dl-bulk"><span>已选 ' + state.dlSelected.size + ' 本</span><button data-action="dl-select-all">全选</button><button data-action="export-selected" class="primary">导出所选</button></div>' : '')
       + '<div class="card" style="padding:14px 16px"><div class="storage-line">' + icon('folder')
       + '<span>已用 <b>' + fmtBytes(state.storage.bytes) + '</b> · 剩余 ' + fmtBytes(state.storage.free) + '</span></div>'
       + '<div style="font-size:10px;color:var(--faint);margin-top:5px">下载保存在应用私有目录，卸载应用会一并清除。</div></div>'
@@ -1684,6 +1735,7 @@
         + '<button class="btn btn-primary" data-action="go-home">去发现</button></div>';
     }
     return state.downloads.map(item => {
+      const selected = state.dlSelected.has(item.key);
       const target = item.target || (item.limit > 0
         ? Math.min(item.limit, item.downloadable || item.total || 0)
         : (item.downloadable || item.total || 0));
@@ -1694,13 +1746,15 @@
       const limitText = (item.rangeStart > 1 || (item.rangeEnd > 0 && item.rangeEnd < (item.total || 0)))
         ? ('第 ' + (item.rangeStart || 1) + '-' + (item.rangeEnd || '末') + ' 章')
         : (item.limit > 0 ? '计划前 ' + item.limit + ' 章' : '整本');
-      return '<div class="dl-card"><div class="dl-top">' + coverHtml(title, { cat: (PROVIDERS[item.providerId] || {}).short || '' })
+      return '<div class="dl-card ' + (selected ? 'selected' : '') + '" data-action="dl-card" data-key="' + esc(item.key) + '">'
+        + (state.dlManage ? '<button class="dl-check ' + (selected ? 'on' : '') + '" data-action="dl-select" data-key="' + esc(item.key) + '">' + (selected ? icon('check') : '') + '</button>' : '')
+        + '<div class="dl-top">' + coverHtml(title, { cat: (PROVIDERS[item.providerId] || {}).short || '' })
         + '<div class="dl-info"><h3>' + esc(title) + '</h3><p><span>' + esc(item.author || '') + '</span><span>' + limitText + '</span><span>' + fmtBytes(item.bytes || 0) + '</span></p></div>'
         + '<span class="status-pill ' + st.cls + '">' + st.label + '</span></div>'
         + '<div class="dl-progress"><div class="dl-bar"><i style="width:' + pct + '%"></i></div>'
         + '<div class="dl-nums"><span>' + done + ' / ' + target + ' 章</span><span>' + pct + '%</span></div></div>'
         + (item.error ? '<div style="font-size:10px;color:var(--danger);margin-top:6px">' + esc(item.error) + '</div>' : '')
-        + '<div class="dl-actions">' + downloadActions(item, st) + '</div></div>';
+        + (state.dlManage ? '' : '<div class="dl-actions">' + downloadActions(item, st) + '</div>') + '</div>';
     }).join('') + '<div style="text-align:center;font-size:10px;color:var(--faint);padding:14px 0">下载任务在后台继续，退出应用后进度会保留。</div>';
   }
   function statusOf(item) {
@@ -1926,7 +1980,9 @@
       + '<div class="setting-row"><div class="si">' + icon(settings.theme === 'dark' ? 'moon' : 'sun') + '</div><div class="st"><b>应用主题</b><span>跟随系统，或固定浅色 / 深色</span></div></div>'
       + '<div style="padding:0 15px 14px"><div class="segmented" data-seg="theme">'
       + ['auto', 'light', 'dark'].map(v => '<button data-action="set-theme" data-value="' + v + '" class="' + (settings.theme === v ? 'active' : '') + '">' + ({ auto: '跟随系统', light: '浅色', dark: '深色' }[v]) + '</button>').join('')
-      + '</div></div></div></div>'
+      + '</div></div>'
+      + '<div class="setting-row"><div class="si">' + icon('list') + '</div><div class="st"><b>简洁模式</b><span>隐藏首页大图，扁平列表，减少装饰和动画</span></div><button class="switch ' + (settings.simpleMode ? 'on' : '') + '" data-action="toggle-simple-mode"></button></div>'
+      + '</div></div>'
 
       + '<div class="setting-group"><h3>阅读</h3><div class="setting-card">'
       + settingRow('type', '默认阅读设置', readerSummary(), 'open-reader-settings', 'chevron')
@@ -1985,7 +2041,7 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.5.6', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.5.8', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
@@ -1993,7 +2049,7 @@
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<div class="note" style="text-align:left;margin:8px 0 0">按首次安装匿名计数，不收集账号或阅读内容；公开计数器可能被刷，仅作参考。</div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
-      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.5.6', '1.5.0')) + '</span></div>'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.5.8', '1.5.0')) + '</span></div>'
       + '<div class="sv">' + icon('right') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="open-feedback">'
       + '<div class="si">' + icon('edit') + '</div><div class="st"><b>问题反馈</b><span>Bug、建议、内容问题，提交到 GitHub Issues</span></div>'
@@ -2504,6 +2560,10 @@
         if (p) openFromProgress(p);
         break;
       }
+      case 'toggle-simple-mode':
+        settings.simpleMode = !settings.simpleMode;
+        saveSettings(); render(); toast(settings.simpleMode ? '已开启简洁模式' : '已关闭简洁模式');
+        break;
       case 'toggle-auto-subscribe':
         settings.autoSubscribe = settings.autoSubscribe === false;
         saveSettings(); render(); toast(settings.autoSubscribe ? '收藏将自动订阅' : '收藏不再自动订阅');
@@ -2638,6 +2698,35 @@
       }
       case 'refresh-downloads':
         refreshDownloads(); updateDownloadsDom(); toast('已刷新');
+        break;
+      case 'dl-manage-toggle':
+        state.dlManage = !state.dlManage;
+        state.dlSelected = new Set();
+        render();
+        break;
+      case 'dl-select': {
+        const k = el.getAttribute('data-key');
+        if (state.dlSelected.has(k)) state.dlSelected.delete(k); else state.dlSelected.add(k);
+        render();
+        break;
+      }
+      case 'dl-card':
+        if (state.dlManage) {
+          const k = el.getAttribute('data-key');
+          if (state.dlSelected.has(k)) state.dlSelected.delete(k); else state.dlSelected.add(k);
+          render();
+        }
+        break;
+      case 'dl-select-all':
+        if (state.dlSelected.size === state.downloads.length) state.dlSelected = new Set();
+        else state.dlSelected = new Set(state.downloads.map(x => x.key));
+        render();
+        break;
+      case 'export-selected':
+        showDownloadExportSheet();
+        break;
+      case 'export-selected-format':
+        exportSelected(el.getAttribute('data-format') || 'txt');
         break;
       case 'pause-dl':
         if (native && native.pause) { try { native.pause(key); } catch (e) {} }

@@ -163,6 +163,27 @@ final class Bridge {
     }
 
     @JavascriptInterface
+    public void exportBooks(String id, String itemsJson, String format) {
+        pool.execute(() -> {
+            try {
+                org.json.JSONArray arr = new org.json.JSONArray(itemsJson == null ? "[]" : itemsJson);
+                java.util.ArrayList<File> files = new java.util.ArrayList<>();
+                for (int i = 0; i < arr.length(); i++) {
+                    org.json.JSONObject o = arr.optJSONObject(i);
+                    if (o == null) continue;
+                    try {
+                        files.add(BookExporter.build(activity, o.optString("provider"), o.optString("novel"), format));
+                    } catch (Exception ignored) {}
+                }
+                if (files.isEmpty()) throw new Exception("所选书籍还没有下载章节");
+                activity.startExportFolder(id, files);
+            } catch (Exception e) {
+                resolve(id, 0, e.getMessage() == null ? "导出失败" : e.getMessage());
+            }
+        });
+    }
+
+    @JavascriptInterface
     public void exportBook(String id, String provider, String novel, String format) {
         pool.execute(() -> {
             try {
@@ -409,7 +430,7 @@ final class Bridge {
 
     @JavascriptInterface
     public String version() {
-        return "1.5.6";
+        return "1.5.8";
     }
 
     @JavascriptInterface

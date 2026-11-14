@@ -256,3 +256,11 @@ body.bars-hidden .reader-bottom { transform: translateY(110%); }
 .r-sheet .r-actions { position: relative; margin-top: 10px; }
 .r-sheet .r-actions button { padding: 11px 8px; }
 .r-sheet .themes { gap: 7px; }
+
+/* ---------- simple reader (1.5.8) ---------- */
+body.simple-mode .chapter-head { border-bottom: 0; padding-bottom: 6px; margin-bottom: 14px; }
+body.simple-mode .chapter-head .ch-tags { display: none; }
+body.simple-mode .reader-top { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--r-bg); }
+body.simple-mode .reader-bottom { background: var(--r-bg); }
+body.simple-mode .r-sheet { box-shadow: none; }
+body.simple-mode .set-group { border-radius: 12px; box-shadow: none; }

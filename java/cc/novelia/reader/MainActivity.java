@@ -8,6 +8,7 @@ import android.graphics.Insets;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.DocumentsContract;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -43,6 +44,7 @@ public class MainActivity extends Activity {
     private static final int REQ_EXPORT_BACKUP = 901;
     private static final int REQ_IMPORT_BACKUP = 902;
     private static final int REQ_EXPORT_BOOK = 903;
+    private static final int REQ_EXPORT_FOLDER = 904;
     private TextToSpeech tts;
     private boolean ttsReady = false;
     private String pendingExportId;
@@ -51,6 +53,8 @@ public class MainActivity extends Activity {
     private String pendingBookId;
     private File pendingBookFile;
     private String pendingBookMime;
+    private String pendingFolderId;
+    private java.util.ArrayList<File> pendingFolderFiles;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -336,6 +340,24 @@ public class MainActivity extends Activity {
         }
     }
 
+    void startExportFolder(String id, java.util.ArrayList<File> files) {
+        if (files == null || files.isEmpty()) {
+            if (bridge != null) bridge.deliver(id, 0, "没有可导出的文件");
+            return;
+        }
+        pendingFolderId = id;
+        pendingFolderFiles = files;
+        try {
+            Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            startActivityForResult(i, REQ_EXPORT_FOLDER);
+        } catch (Exception e) {
+            pendingFolderId = null;
+            pendingFolderFiles = null;
+            if (bridge != null) bridge.deliver(id, 0, "无法打开文件夹选择器");
+        }
+    }
+
     void startExportFile(String id, File file, String filename, String mime) {
         if (file == null || !file.isFile()) {
             if (bridge != null) bridge.deliver(id, 0, "导出文件不存在");
@@ -392,6 +414,36 @@ public class MainActivity extends Activity {
                 out.flush();
                 out.close();
                 bridge.deliver(id, 200, "saved");
+            } catch (Exception e) {
+                bridge.deliver(id, 0, e.getMessage() == null ? "导出失败" : e.getMessage());
+            }
+        } else if (requestCode == REQ_EXPORT_FOLDER) {
+            String id = pendingFolderId;
+            java.util.ArrayList<File> files = pendingFolderFiles;
+            pendingFolderId = null;
+            pendingFolderFiles = null;
+            if (id == null || bridge == null) return;
+            if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+                bridge.deliver(id, 0, "已取消");
+                return;
+            }
+            int ok = 0, fail = 0;
+            try {
+                Uri tree = data.getData();
+                for (File file : files) {
+                    try {
+                        String mime = file.getName().endsWith(".epub") ? "application/epub+zip" : "text/plain";
+                        Uri doc = DocumentsContract.createDocument(getContentResolver(), tree, mime, file.getName());
+                        if (doc == null) { fail++; continue; }
+                        InputStream in = new FileInputStream(file);
+                        OutputStream out = getContentResolver().openOutputStream(doc, "wt");
+                        if (out == null) { in.close(); fail++; continue; }
+                        byte[] buf = new byte[8192]; int n;
+                        while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
+                        in.close(); out.flush(); out.close(); ok++;
+                    } catch (Exception e) { fail++; }
+                }
+                bridge.deliver(id, 200, "saved:" + ok + (fail > 0 ? ",failed:" + fail : ""));
             } catch (Exception e) {
                 bridge.deliver(id, 0, e.getMessage() == null ? "导出失败" : e.getMessage());
             }
