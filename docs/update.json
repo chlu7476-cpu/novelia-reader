@@ -1,8 +1,8 @@
 {
-  "versionCode": 51,
-  "versionName": "1.5.4",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.5.4.apk",
-  "notes": "修复阅读设置中「导出书籍」按钮未显示；支持 TXT / EPUB。",
+  "versionCode": 52,
+  "versionName": "1.5.5",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.5.5.apk",
+  "notes": "1. 顶部工具栏新增导出书籍图标\n2. 工具栏/弹层展开时，音量键会先收起再翻页\n3. 修复导出入口未显示",
   "size": 140313,
-  "sha256": "2f59fc4dd44656e880a07aa9920d2291487eb5ca4522841543f1d8d1f905ba71"
+  "sha256": "b8d74fd0a35b7206d8808db7affd907fa20ad512f91f8a72114b6657e1bdd9da"
 }

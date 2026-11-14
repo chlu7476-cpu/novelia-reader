@@ -1176,7 +1176,7 @@
 
   window.ReaderApp = {
     turnPage(dir) {
-      if (sheetEl.classList.contains('show')) return true;
+      if (sheetEl.classList.contains('show')) closeSheet();
       if (dir < 0) prevPage(); else nextPage();
       return true;
     },
