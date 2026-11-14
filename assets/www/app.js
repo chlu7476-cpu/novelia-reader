@@ -654,7 +654,48 @@
       + '<div class="feedback-form"><label>用户名 / 邮箱<input id="forum-user" autocomplete="username" maxlength="120"></label>'
       + '<label>密码<input id="forum-pass" type="password" autocomplete="current-password" maxlength="200"></label></div>'
       + '<div class="sheet-actions"><button class="btn btn-primary btn-block" data-action="forum-do-login">登录</button>'
+      + '<button class="btn btn-ghost btn-block" data-action="forum-register">没有账号？注册</button>'
       + '<button class="btn btn-ghost btn-block" data-action="close-sheet">取消</button></div>');
+  }
+  function forumRegisterSheet() {
+    showSheet('<h2>注册论坛账号</h2><p class="sheet-sub">注册成功后会自动登录。需要邮箱验证码和人机验证。</p>'
+      + '<div class="feedback-form"><label>用户名（2–16 个字符）<input id="forum-reg-user" autocomplete="username" maxlength="16"></label>'
+      + '<label>邮箱<input id="forum-reg-email" type="email" autocomplete="email" maxlength="120"></label>'
+      + '<label>密码（至少 8 个字符）<input id="forum-reg-pass" type="password" autocomplete="new-password" maxlength="100"></label>'
+      + '<label>邮箱验证码（6 位数字）<input id="forum-reg-otp" inputmode="numeric" maxlength="6" placeholder="6 位数字"></label></div>'
+      + '<div class="sheet-actions"><button class="btn btn-primary btn-block" data-action="forum-do-register">注册并登录</button>'
+      + '<button class="btn btn-ghost btn-block" data-action="forum-send-otp">发送邮箱验证码</button>'
+      + '<button class="btn btn-ghost btn-block" data-action="forum-login">已有账号，去登录</button></div>');
+  }
+  async function forumSendOtp() {
+    const eEl = $('#forum-reg-email');
+    const email = eEl ? eEl.value.trim() : '';
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('请填写有效邮箱'); return; }
+    toast('请先完成人机验证…');
+    try {
+      const token = (await invokeLong('requestTurnstile')).trim();
+      if (!token) throw new Error('人机验证未完成');
+      await invokeLong('forumOtp', email, token);
+      toast('验证码已发送，请查收邮箱');
+    } catch (e) { toast(e.message || '验证码发送失败'); }
+  }
+  async function forumDoRegister() {
+    const uEl = $('#forum-reg-user'), eEl = $('#forum-reg-email'), pEl = $('#forum-reg-pass'), oEl = $('#forum-reg-otp');
+    const username = uEl ? uEl.value.trim() : '', email = eEl ? eEl.value.trim() : '';
+    const password = pEl ? pEl.value : '', otp = oEl ? oEl.value.trim() : '';
+    if (username.length < 2) { toast('用户名至少 2 个字符'); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('请填写有效邮箱'); return; }
+    if (password.length < 8) { toast('密码至少 8 个字符'); return; }
+    if (!/^\d{6}$/.test(otp)) { toast('验证码应为 6 位数字'); return; }
+    try {
+      let raw = (await invokeLong('forumRegister', username, password, email, otp)).trim();
+      let token = raw;
+      try { const j = JSON.parse(raw); token = j.token || j.accessToken || (j.data && j.data.token) || raw; } catch (e) {}
+      if (!token || token.length < 20) throw new Error('注册成功但没有拿到登录令牌');
+      forumSetToken(token);
+      closeSheet(); toast('注册成功，已自动登录');
+      if (state.route.name === 'forum') { if (state.route.seg[1]) loadForumPost(state.route.seg[1]); else loadForum(0); }
+    } catch (e) { toast(e.message || '注册失败'); }
   }
   async function forumDoLogin() {
     const uEl = $('#forum-user'), pEl = $('#forum-pass');
@@ -2323,7 +2364,7 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.6.9', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.7.0', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
@@ -2334,7 +2375,7 @@
       + '<div class="si">' + icon('wifi') + '</div><div class="st"><b>在线人数</b><span id="online-count">点击刷新</span></div>'
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
-      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.6.9', '1.5.0')) + '</span></div>'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.7.0', '1.5.0')) + '</span></div>'
       + '<div class="sv">' + icon('right') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="open-feedback">'
       + '<div class="si">' + icon('edit') + '</div><div class="st"><b>问题反馈</b><span>Bug、建议、内容问题，直接发送到服务器</span></div>'
@@ -2764,6 +2805,15 @@
         break;
       case 'forum-login':
         forumLoginSheet();
+        break;
+      case 'forum-register':
+        forumRegisterSheet();
+        break;
+      case 'forum-send-otp':
+        forumSendOtp();
+        break;
+      case 'forum-do-register':
+        forumDoRegister();
         break;
       case 'forum-do-login':
         forumDoLogin();

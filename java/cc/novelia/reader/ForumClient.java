@@ -16,6 +16,8 @@ import java.nio.charset.StandardCharsets;
 final class ForumClient {
     private static final String API = "https://forum.novelia.cc/api/v1/";
     private static final String LOGIN = "https://auth.novelia.cc/api/v1/auth/login";
+    private static final String OTP = "https://auth.novelia.cc/api/v1/auth/otp/request";
+    private static final String REGISTER = "https://auth.novelia.cc/api/v1/auth/register";
 
     private ForumClient() {}
 
@@ -40,6 +42,31 @@ final class ForumClient {
         body.put("username", username.trim());
         body.put("password", password);
         return call(ctx, "POST", LOGIN, body.toString(), null, "https://forum.novelia.cc");
+    }
+
+    static String requestOtp(Context ctx, String email, String turnstile) throws Exception {
+        if (email == null || !email.contains("@")) throw new Exception("请填写有效邮箱");
+        if (turnstile == null || turnstile.isEmpty() || turnstile.length() > 2048) throw new Exception("请先完成人机验证");
+        JSONObject body = new JSONObject();
+        body.put("app", "f");
+        body.put("email", email.trim());
+        body.put("type", "verify");
+        body.put("turnstileToken", turnstile);
+        return call(ctx, "POST", OTP, body.toString(), null, "https://forum.novelia.cc");
+    }
+
+    static String register(Context ctx, String username, String password, String email, String otp) throws Exception {
+        if (username == null || username.trim().length() < 2 || username.trim().length() > 16) throw new Exception("用户名应为 2–16 个字符");
+        if (password == null || password.length() < 8) throw new Exception("密码至少 8 个字符");
+        if (email == null || !email.contains("@")) throw new Exception("请填写有效邮箱");
+        if (otp == null || !otp.trim().matches("[0-9]{6}")) throw new Exception("验证码应为 6 位数字");
+        JSONObject body = new JSONObject();
+        body.put("app", "f");
+        body.put("username", username.trim());
+        body.put("password", password);
+        body.put("email", email.trim());
+        body.put("otp", otp.trim());
+        return call(ctx, "POST", REGISTER, body.toString(), null, "https://forum.novelia.cc");
     }
 
     private static String call(Context ctx, String method, String urlText, String body, String token, String origin) throws Exception {

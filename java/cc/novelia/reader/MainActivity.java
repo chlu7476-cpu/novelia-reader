@@ -47,6 +47,7 @@ public class MainActivity extends Activity {
     private static final int REQ_EXPORT_BOOK = 903;
     private static final int REQ_EXPORT_FOLDER = 904;
     private static final int REQ_IMPORT_LOCAL = 905;
+    private static final int REQ_TURNSTILE = 906;
     private TextToSpeech tts;
     private boolean ttsReady = false;
     private String pendingExportId;
@@ -58,6 +59,7 @@ public class MainActivity extends Activity {
     private String pendingFolderId;
     private java.util.ArrayList<File> pendingFolderFiles;
     private String pendingLocalImportId;
+    private String pendingTurnstileId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -343,6 +345,16 @@ public class MainActivity extends Activity {
         }
     }
 
+    void startTurnstile(String id) {
+        pendingTurnstileId = id;
+        try {
+            startActivityForResult(new Intent(this, TurnstileActivity.class), REQ_TURNSTILE);
+        } catch (Exception e) {
+            pendingTurnstileId = null;
+            if (bridge != null) bridge.deliver(id, 0, "无法打开人机验证");
+        }
+    }
+
     void startImportLocalBook(String id) {
         pendingLocalImportId = id;
         try {
@@ -437,6 +449,14 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 bridge.deliver(id, 0, e.getMessage() == null ? "导出失败" : e.getMessage());
             }
+        } else if (requestCode == REQ_TURNSTILE) {
+            String id = pendingTurnstileId;
+            pendingTurnstileId = null;
+            if (id == null || bridge == null) return;
+            if (resultCode == RESULT_OK && data != null) {
+                String token = data.getStringExtra("token");
+                bridge.deliver(id, 200, token == null ? "" : token);
+            } else bridge.deliver(id, 0, "已取消人机验证");
         } else if (requestCode == REQ_IMPORT_LOCAL) {
             String id = pendingLocalImportId;
             pendingLocalImportId = null;
