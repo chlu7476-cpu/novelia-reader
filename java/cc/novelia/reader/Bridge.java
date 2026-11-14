@@ -500,7 +500,7 @@ final class Bridge {
 
     @JavascriptInterface
     public String version() {
-        return "1.7.3";
+        return "1.7.4";
     }
 
     @JavascriptInterface

@@ -664,7 +664,7 @@
       + '<label>邮箱<input id="forum-reg-email" type="email" autocomplete="email" maxlength="120"></label>'
       + '<label>密码（至少 8 个字符）<input id="forum-reg-pass" type="password" autocomplete="new-password" maxlength="100"></label>'
       + '<label>邮箱验证码（6 位数字）<input id="forum-reg-otp" inputmode="numeric" maxlength="6" placeholder="6 位数字"></label></div>'
-      + '<div class="sheet-actions"><button class="btn btn-primary btn-block" data-action="forum-do-register">注册并登录</button>'
+      + '<div class="sheet-actions stack"><button class="btn btn-primary btn-block" data-action="forum-do-register">注册并登录</button>'
       + '<button class="btn btn-ghost btn-block" data-action="forum-send-otp">发送邮箱验证码</button>'
       + '<button class="btn btn-ghost btn-block" data-action="forum-login">已有账号，去登录</button></div>');
   }
@@ -2127,7 +2127,7 @@
       + '<label>邮箱<input id="auth-reg-email" type="email" autocomplete="email" maxlength="120"></label>'
       + '<label>密码（至少 8 个字符）<input id="auth-reg-pass" type="password" autocomplete="new-password" maxlength="100"></label>'
       + '<label>邮箱验证码（6 位数字）<input id="auth-reg-otp" inputmode="numeric" maxlength="6" placeholder="6 位数字"></label></div>'
-      + '<div class="sheet-actions"><button class="btn btn-primary btn-block" data-action="auth-do-register">注册并登录</button>'
+      + '<div class="sheet-actions stack"><button class="btn btn-primary btn-block" data-action="auth-do-register">注册并登录</button>'
       + '<button class="btn btn-ghost btn-block" data-action="auth-send-otp">发送邮箱验证码</button>'
       + '<button class="btn btn-ghost btn-block" data-action="open-login">已有账号，去登录</button>'
       + '<button class="btn btn-ghost btn-block" data-action="close-sheet">取消</button></div>');
@@ -2421,7 +2421,7 @@
 
       + '<div class="setting-group"><h3>关于</h3><div class="setting-card"><div class="about-card">'
       + '<div class="logo">N</div><b>Novelia 阅读</b>'
-      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.7.3', '1.0.1')) + '</p>'
+      + '<p>非官方第三方客户端 · 版本 ' + esc(sync(() => native && native.version ? native.version() : '1.7.4', '1.0.1')) + '</p>'
       + '<p>内容来自 <span style="color:var(--primary)">轻小说机翻机器人</span>。本应用只提供阅读与缓存工具，不存储、不传播作品内容，版权归原作者与站点所有。</p>'
       + '<div class="divider"></div>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="refresh-usage">'
@@ -2432,7 +2432,7 @@
       + '<div class="si">' + icon('wifi') + '</div><div class="st"><b>在线人数</b><span id="online-count">点击刷新</span></div>'
       + '<div class="sv">' + icon('refresh') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="check-app-update">'
-      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.7.3', '1.5.0')) + '</span></div>'
+      + '<div class="si">' + icon('download') + '</div><div class="st"><b>检查更新</b><span>当前 ' + esc(sync(() => native && native.version ? native.version() : '1.7.4', '1.5.0')) + '</span></div>'
       + '<div class="sv">' + icon('right') + '</div></button>'
       + '<button class="setting-row" style="width:100%;text-align:left" data-action="open-feedback">'
       + '<div class="si">' + icon('edit') + '</div><div class="st"><b>问题反馈</b><span>Bug、建议、内容问题，直接发送到服务器</span></div>'
