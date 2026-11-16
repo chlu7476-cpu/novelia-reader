@@ -569,6 +569,7 @@ final class Wenku {
         s = s.replaceAll("(?is)<svg[^>]*>.*?</svg>", " ");
         s = s.replaceAll("(?i)<br\\s*/?>", "\n");
         s = s.replaceAll("(?i)</(p|div|h[1-6]|li|section|article|blockquote|tr|td)>", "\n");
+        s = flattenRuby(s);
         s = s.replaceAll("(?is)<[^>]+>", " ");
         String plain = decodeEntities(s);
         List<String> out = new ArrayList<>();
@@ -594,7 +595,24 @@ final class Wenku {
 
     private static String stripTags(String s) {
         if (s == null) return "";
-        return cleanText(decodeEntities(s.replaceAll("(?is)<[^>]+>", " ")));
+        return cleanText(decodeEntities(flattenRuby(s).replaceAll("(?is)<[^>]+>", " ")));
+    }
+
+    // EPUB 的注音通常写成 <ruby>石<rt>いし</rt></ruby>。直接剥标签会在
+    // 汉字和假名之间留下空格（“石 いし”），这里把注音还原成“石（いし）”。
+    // <rp> 是给不支持 ruby 的阅读器看的备用括号，直接丢掉。
+    private static String flattenRuby(String s) {
+        if (s == null) return "";
+        s = s.replaceAll("(?is)<rp\\b[^>]*>.*?</rp>", "");
+        java.util.regex.Matcher rt = java.util.regex.Pattern
+                .compile("(?is)<rt\\b[^>]*>(.*?)</rt>").matcher(s);
+        StringBuffer sb = new StringBuffer();
+        while (rt.find()) {
+            String reading = rt.group(1).replaceAll("(?is)<[^>]+>", " ").trim();
+            rt.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(reading.isEmpty() ? "" : "（" + reading + "）"));
+        }
+        rt.appendTail(sb);
+        return sb.toString().replaceAll("(?i)</?(?:ruby|rb)\\b[^>]*>", "");
     }
 
     private static String decodeEntities(String text) {

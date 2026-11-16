@@ -1,10 +1,10 @@
 {
-  "versionCode": 75,
-  "versionName": "1.7.9",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.9.apk",
-  "notes": "修复论坛登录过期后一直报无效令牌。",
+  "versionCode": 76,
+  "versionName": "1.7.10",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.10.apk",
+  "notes": "修复 EPUB 注音导入：日文 ruby 不再变成“石 いし”，改为“石（いし）”。",
   "size": 156697,
-  "sha256": "12d332b00dc26a37c7268971e1c92f0aa63d63cf39639fed250b97b79ae8420e",
+  "sha256": "3aae392a22f38556944d4636e9750ff3fba06430922f5483aeeae610671d0ff0",
   "minVersionCode": 0,
   "force": false,
   "notice": {
