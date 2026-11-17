@@ -417,14 +417,14 @@
     pagesEl.style.height = '100%';
     const w = Math.max(1, pagesEl.clientWidth);
     pagesEl.style.columnWidth = w + 'px';
-    // 分页用 0 间距：部分 WebView 会把 column-gap 算进列宽，
-    // 翻到后面时上一列残影留在左边、当前列右侧被裁掉。
-    pagesEl.style.setProperty('column-gap', '0px', 'important');
-    pagesEl.style.columnGap = '0px';
+    // 保留 42px 列间距，但步进必须包含它；不能再把 gap 设成 0。
+    const gap = 42;
+    pagesEl.style.setProperty('column-gap', gap + 'px', 'important');
+    pagesEl.style.columnGap = gap + 'px';
     const sw = pagesEl.scrollWidth;
-    // WebView 有时把 padding / gap 算进真实列宽，clientWidth 不可靠。
-    // 从文本行盒的 left 坐标实测列起点，取相邻列的最小差值作为步进。
-    const step = measureColumnStep(pagesEl, w);
+    // 从段落块的 left 坐标实测列起点，取相邻列的最小差值作为步进。
+    // 实测值包含列间距，避免 WebView 把 gap / padding 算错后整体右移。
+    const step = measureColumnStep(pagesEl, w + gap);
     totalPages = Math.max(1, Math.ceil((sw - 1) / step));
     pageStep = step;
     const target = Math.max(0, Math.min(totalPages - 1, Math.round((keep || 0) * (totalPages - 1))));

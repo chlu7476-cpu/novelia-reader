@@ -1,10 +1,10 @@
 {
-  "versionCode": 82,
-  "versionName": "1.7.16",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.16.apk",
-  "notes": "改为用段落的真实块级坐标测量分页列步进，修复翻页右移和列间空白。",
+  "versionCode": 83,
+  "versionName": "1.7.17",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.17.apk",
+  "notes": "恢复 42px 分页列间距，并用段落真实坐标测量包含间距的翻页步进。",
   "size": 156697,
-  "sha256": "d85e449a1535bb5918fb877aac7ed919aff664df7ae47376b98765eee71ff4ea",
+  "sha256": "ea4c68b51f2ec821e86ae202e5fda03b62310d5a16f1e905195de5376638fe0e",
   "minVersionCode": 0,
   "force": false,
   "notice": {
