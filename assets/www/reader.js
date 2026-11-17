@@ -394,10 +394,13 @@
     pagesEl.style.columnWidth = w + 'px';
     // 分页用 0 间距：部分 WebView 会把 column-gap 算进列宽，
     // 翻到后面时上一列残影留在左边、当前列右侧被裁掉。
+    pagesEl.style.setProperty('column-gap', '0px', 'important');
     pagesEl.style.columnGap = '0px';
     const sw = pagesEl.scrollWidth;
-    totalPages = Math.max(1, Math.ceil((sw - 1) / w));
-    pageStep = w;
+    const gap = parseFloat(getComputedStyle(pagesEl).columnGap) || 0;
+    const step = w + gap;
+    totalPages = Math.max(1, Math.ceil((sw - 1) / step));
+    pageStep = step;
     const target = Math.max(0, Math.min(totalPages - 1, Math.round((keep || 0) * (totalPages - 1))));
     setPage(target, false);
     pagesEl.style.transition = '';
