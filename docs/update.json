@@ -1,10 +1,10 @@
 {
-  "versionCode": 78,
-  "versionName": "1.7.12",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.12.apk",
-  "notes": "修复文库版翻到后段整页向右偏移、右侧被裁、左侧残留上一页文字；强制分栏间距为 0。",
+  "versionCode": 79,
+  "versionName": "1.7.13",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.13.apk",
+  "notes": "修复文库版分栏错位与旧 CSS 缓存；更新检查改为每 15 分钟一次。",
   "size": 156697,
-  "sha256": "fb988567b20427e752cb52e7e0b4f12aab547209cff407d2722887c2c6fc184a",
+  "sha256": "0581b6ebd66483ba329ee190ef80a4076c4b66608f5bd0e95ae15ea13a1bcae5",
   "minVersionCode": 0,
   "force": false,
   "notice": {
