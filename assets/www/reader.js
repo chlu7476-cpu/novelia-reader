@@ -366,6 +366,31 @@
     return totalPages > 1 ? page / (totalPages - 1) : 0;
   }
 
+  function measureColumnStep(pagesEl, fallback) {
+    try {
+      const article = pagesEl.querySelector('.article') || pagesEl;
+      const range = document.createRange();
+      range.selectNodeContents(article);
+      const rects = Array.from(range.getClientRects());
+      const xs = [];
+      for (const r of rects) {
+        if (!r || r.width < 4 || r.height < 4) continue;
+        const x = Math.round(r.left * 10) / 10;
+        if (x >= 0 && x < 10000) xs.push(x);
+      }
+      if (!xs.length) return fallback;
+      const freq = new Map();
+      for (const x of xs) freq.set(x, (freq.get(x) || 0) + 1);
+      const base = Array.from(freq.entries()).sort((a, b) => b[1] - a[1])[0][0];
+      const uniq = Array.from(new Set(xs)).sort((a, b) => a - b);
+      const ds = uniq.filter(x => x > base + 20).map(x => x - base)
+        .filter(d => d > fallback * 0.5 && d < fallback * 2.5);
+      return ds.length ? Math.min.apply(null, ds) : fallback;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
   function layoutPages(keep) {
     const pagesEl = $('#reader-pages');
     if (!pagesEl) return;
@@ -397,8 +422,9 @@
     pagesEl.style.setProperty('column-gap', '0px', 'important');
     pagesEl.style.columnGap = '0px';
     const sw = pagesEl.scrollWidth;
-    const gap = parseFloat(getComputedStyle(pagesEl).columnGap) || 0;
-    const step = w + gap;
+    // WebView 有时把 padding / gap 算进真实列宽，clientWidth 不可靠。
+    // 从文本行盒的 left 坐标实测列起点，取相邻列的最小差值作为步进。
+    const step = measureColumnStep(pagesEl, w);
     totalPages = Math.max(1, Math.ceil((sw - 1) / step));
     pageStep = step;
     const target = Math.max(0, Math.min(totalPages - 1, Math.round((keep || 0) * (totalPages - 1))));
