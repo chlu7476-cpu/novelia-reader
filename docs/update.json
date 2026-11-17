@@ -1,10 +1,10 @@
 {
-  "versionCode": 80,
-  "versionName": "1.7.14",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.14.apk",
-  "notes": "用真实文本行盒测量列宽，修复文库版翻页整体右移、右侧裁字、左侧残页。",
+  "versionCode": 81,
+  "versionName": "1.7.15",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.15.apk",
+  "notes": "分页列间距改为 HTML 内联强制 0，并在运行时用真实列宽校准。",
   "size": 156697,
-  "sha256": "01ced3e59804674c176bcfe028709d78dceaf6ac47c79a3de946d01f54961f66",
+  "sha256": "7897349e1f7b4937ce6293e185d3d8f95403d7408cfb9868224ff27936e46440",
   "minVersionCode": 0,
   "force": false,
   "notice": {
