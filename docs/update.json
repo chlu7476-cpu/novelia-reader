@@ -1,10 +1,10 @@
 {
-  "versionCode": 76,
-  "versionName": "1.7.10",
-  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.10.apk",
-  "notes": "修复 EPUB 注音导入：日文 ruby 不再变成“石 いし”，改为“石（いし）”。",
+  "versionCode": 77,
+  "versionName": "1.7.11",
+  "apkUrl": "https://chlu7476-cpu.github.io/novelia-reader/NoveliaReader-1.7.11.apk",
+  "notes": "修复文库版横向翻页到后面时右侧文字被裁、左侧残留上一列文字。",
   "size": 156697,
-  "sha256": "3aae392a22f38556944d4636e9750ff3fba06430922f5483aeeae610671d0ff0",
+  "sha256": "7058c6d7b26356550ef62532b3bece804c401c5f2dcc6022b5fde60342112ba0",
   "minVersionCode": 0,
   "force": false,
   "notice": {
