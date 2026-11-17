@@ -369,12 +369,11 @@
   function measureColumnStep(pagesEl, fallback) {
     try {
       const article = pagesEl.querySelector('.article') || pagesEl;
-      const range = document.createRange();
-      range.selectNodeContents(article);
-      const rects = Array.from(range.getClientRects());
+      const blocks = Array.from(article.children);
       const xs = [];
-      for (const r of rects) {
-        if (!r || r.width < 4 || r.height < 4) continue;
+      for (const el of blocks) {
+        const r = el.getBoundingClientRect();
+        if (!r || r.width < 8 || r.height < 4) continue;
         const x = Math.round(r.left * 10) / 10;
         if (x >= 0 && x < 10000) xs.push(x);
       }
@@ -390,6 +389,7 @@
       return fallback;
     }
   }
+
 
   function layoutPages(keep) {
     const pagesEl = $('#reader-pages');
